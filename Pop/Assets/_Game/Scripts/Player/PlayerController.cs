@@ -7,8 +7,10 @@ namespace Pop.Player
     /// <summary>
     /// Rigidbody 기반 캡슐 플레이어. 측면 한 평면(XY)에서 A/D 이동과 점프만 한다.
     /// 입력은 Update에서 읽고 물리는 FixedUpdate에서 적용한다. 점프는 버퍼로 놓치지 않는다.
-    /// 바닥 판정은 접촉 법선(위쪽 성분)으로 한다. Normal/Flying/Falling 중 벽 접촉은 무해(그냥 부딪힘).
+    /// 바닥 판정은 접촉 법선(위쪽 성분)으로 한다. 법선이 바닥 경사(maxGroundSlope)보다 가파르면 벽/천장.
     /// Attached 중 접촉 → 즉시 해제 (바닥이면 해제만, 벽/천장이면 해제 + Stunned).
+    /// 공중(Normal/Flying/Falling, 바닥 접촉 없음)에서 벽/천장에 airStunMinImpactSpeed 넘게 부딪히면 Stunned (2026-11-20 사용자).
+    /// 바닥에 서서 벽으로 걸어 들어가는 것, 바닥과 벽에 같이 닿은 스텝, 스치기는 기절이 아니다.
     /// 부착 면 예외 없음: 부착한 콜라이더 자신에 닿아도 같은 규칙 (2026-11-13 사용자 결정, 기획서 4장 표 첫 줄과 다름).
     /// 바닥에서 부착하면 groundAttachGrace 동안 모든 접촉 무시, 바닥에서 떨어지기 전까지 바닥 접촉 무시.
     /// Stunned는 바닥에 착지해야만 풀린다. 낙사(killY 아래 / KillZone) → Dead → 즉시 리스폰 → Normal.
@@ -80,6 +82,12 @@ namespace Pop.Player
         // 기절
         float _stuckTimer;
 
+        // 공중 벽/천장 충돌 기절 (Normal/Flying/Falling 중 공중)
+        bool _airHitWall;          // 지난 물리 스텝에 airStunMinImpactSpeed 넘게 벽/천장에 부딪혔는가
+        bool _preStepValid;        // 지난 FixedUpdate가 일반 이동 경로로 속도를 넣었는가
+        bool _preStepAirborne;     // 그 스텝을 공중에서 시작했는가 (바닥에서 점프한 스텝은 false)
+        Vector3 _preStepVelocity;  // 그 스텝에 넣은 속도 + 기본 중력 한 스텝 = 충돌 직전 속도 추정
+
         // 리스폰
         Vector3 _respawnPosition;
         float _respawnFixedTime = -999f; // 마지막 리스폰 시각 (Time.fixedTime)
@@ -136,6 +144,8 @@ namespace Pop.Player
         public event Action<bool> Released;
         /// <summary>부착 중 접촉으로 해제됐을 때 (기절했는가)</summary>
         public event Action<bool> ContactReleased;
+        /// <summary>공중에서 벽/천장에 부딪혀 기절했을 때</summary>
+        public event Action AirStunned;
         /// <summary>낙사했을 때 (리스폰 직전)</summary>
         public event Action Died;
         /// <summary>리스폰 지점으로 옮겨졌을 때 (위치). 카메라가 이걸 듣고 바로 따라간다.</summary>
@@ -219,6 +229,7 @@ namespace Pop.Player
                 return;
             }
 
+            bool groundContactRaw = _groundContactThisStep; // 점프 직후 무시 타이머와 상관없는 실제 바닥 접촉
             // 1) 지난 물리 스텝의 접촉으로 바닥 판정 확정
             if (_groundIgnoreTimer > 0f)
             {
@@ -242,6 +253,14 @@ namespace Pop.Player
             _attachHitGround = false;
             if (_state == PlayerState.Attached && (hitWall || hitGround))
                 DoContactRelease(stun: hitWall);
+            // 1a') 공중에서 벽/천장에 부딪힘 → 기절. 이번 스텝에 바닥 접촉이 있었으면(착지 · 모서리) 기절하지 않는다.
+            bool airHit = _airHitWall;
+            _airHitWall = false;
+            _preStepValid = false;
+            if (airHit && !groundContactRaw && IsAirStunState(_state))
+                DoAirStun();
+            bool stepStartAirborne = !groundContactRaw && !_isGrounded;
+
 
             // 1b) 해제 요청 (클릭 / Space) 처리
             if (_releaseRequested)
@@ -342,6 +361,11 @@ namespace Pop.Player
             v.z = 0f;
             _rb.linearVelocity = v;
 
+            // 다음 충돌 판정용: 이 속도에 물리 엔진이 기본 중력을 한 스텝 더한 것이 충돌 직전 속도다.
+            _preStepVelocity = v + (_rb.useGravity ? Physics.gravity * dt : Vector3.zero);
+            _preStepAirborne = stepStartAirborne;
+            _preStepValid = true;
+
             // 5) 상태. Normal/Falling은 바닥 여부로 자동 전환, Flying은 착지하면 Normal.
             //    Attached·Stunned는 위에서 처리, Dead는 Kill 안에서 바로 Normal로 돌아온다.
             //    리스폰 직후 한두 스텝은 접촉이 아직 안 와서 Falling으로 튀지 않게 건너뛴다.
@@ -367,6 +391,9 @@ namespace Pop.Player
                                && !InGroundAttachGrace;
             // 바닥에서 부착했고 아직 한 번도 바닥에서 떨어지지 않았으면 바닥 접촉은 무시
             bool ignoreGround = _attachedFromGround && !_leftGroundSinceAttach;
+            // 공중 충돌 기절 판정: 지난 스텝을 공중에서 시작했고 지금 Normal/Flying/Falling일 때만.
+            bool airCheck = _preStepValid && _preStepAirborne && IsAirStunState(_state)
+                            && c.collider != null && !c.collider.isTrigger;
 
             int n = c.contactCount;
             for (int i = 0; i < n; i++)
@@ -381,9 +408,12 @@ namespace Pop.Player
                 }
                 else
                 {
-                    // 벽/천장. Normal·Flying·Falling·Stunned에서는 무해: 물리로 그냥 부딪힌다.
+                    // 벽/천장. Attached면 해제 + 기절. 공중(Normal·Flying·Falling)이면 면 안쪽 속도가
+                    // airStunMinImpactSpeed를 넘을 때만 기절(스치기 무시). 바닥에서 시작한 스텝·Stunned에서는 무해.
                     _lastWallNormal = normal;
                     if (attachCheck) _attachHitWall = true;
+                    if (airCheck && -Vector3.Dot(_preStepVelocity, normal) > tuning.airStunMinImpactSpeed)
+                        _airHitWall = true;
                 }
             }
         }
@@ -415,6 +445,7 @@ namespace Pop.Player
             _releaseWithJump = false;
             _jumpBufferTimer = 0f;
             _attachHitWall = false;
+            _airHitWall = false;
             _attachHitGround = false;
 
             SetState(PlayerState.Attached);
@@ -466,12 +497,62 @@ namespace Pop.Player
             ContactReleased?.Invoke(stun);
         }
 
+        static bool IsAirStunState(PlayerState s) =>
+            s == PlayerState.Normal || s == PlayerState.Flying || s == PlayerState.Falling;
+
+        /// <summary>공중에서 벽/천장에 부딪혀 기절. 속도는 충돌 뒤 그대로 두고 떨어진다. 착지해야 풀린다.</summary>
+        void DoAirStun()
+        {
+            _jumpBufferTimer = 0f;
+            _coyoteTimer = 0f;
+            _stuckTimer = 0f;
+            SetState(PlayerState.Stunned);
+            AirStunned?.Invoke();
+        }
+
         /// <summary>리스폰 지점을 바꾼다 (체크포인트가 부른다). z는 0으로 맞춘다.</summary>
         public void SetRespawnPoint(Vector3 position)
         {
             position.z = 0f;
             _respawnPosition = position;
         }
+
+        /// <summary>
+        /// 개발용 순간이동 (에디터 창 Pop/Debug/Teleport가 부른다). 게임 진행에는 쓰지 않는다.
+        /// 줄 해제 · 기절 해제 · 속도 0 · Z는 지금 값 유지 → Normal (착지 전이면 곧 Falling). 이동·튜닝·기절 규칙은 건드리지 않는다.
+        /// </summary>
+        public void DebugTeleport(Vector3 position)
+        {
+            if (_rb == null) return;
+            bool wasAttached = _state == PlayerState.Attached;
+
+            position.z = _rb.position.z; // Z 고정 평면 유지
+            _attachedCollider = null;
+            _releaseRequested = false;
+            _releaseWithJump = false;
+            _attachHitWall = false;
+            _attachHitGround = false;
+            _airHitWall = false;
+            _preStepValid = false;
+
+            _rb.linearVelocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+            _rb.position = position;
+            transform.position = position;
+            _jumpBufferTimer = 0f;
+            _coyoteTimer = 0f;
+            _groundIgnoreTimer = 0f;
+            _stuckTimer = 0f;
+            _isGrounded = false;
+            _groundContactThisStep = false;
+            _groundNormalThisStep = Vector3.up;
+            _lastWallNormal = Vector3.zero;
+
+            _respawnFixedTime = Time.fixedTime; // 리스폰과 같이: 한두 스텝 Falling 전환 · 재낙사 무시
+            SetState(PlayerState.Normal);
+            if (wasAttached) Released?.Invoke(false);
+        }
+
 
         /// <summary>
         /// 낙사. 줄 해제 · 기절 해제 · 속도 0 → 즉시 리스폰 지점으로 → Normal.
@@ -489,6 +570,8 @@ namespace Pop.Player
             _releaseWithJump = false;
             _attachHitWall = false;
             _attachHitGround = false;
+            _airHitWall = false;
+            _preStepValid = false;
             if (wasAttached) Released?.Invoke(false);
             Died?.Invoke();
 

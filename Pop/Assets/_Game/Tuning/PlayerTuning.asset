@@ -22,9 +22,9 @@ MonoBehaviour:
   maxFallSpeed: 30
   maxGroundSlope: 45
   groundIgnoreAfterJump: 0.1
-  plungerRange: 15
+  plungerRange: 7.5
   fireFailCooldown: 0.3
   groundAttachGrace: 0.2
   groundAttachLift: 0.4
   releaseInertiaMultiplier: 1
-  swingForce: 20
+  swingForce: 4

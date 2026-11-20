@@ -35,7 +35,7 @@ namespace Pop.Player
 
         [Header("뚫어뻥")]
         [Tooltip("뚫어뻥 사거리 (m)")]
-        public float plungerRange = 15f;
+        public float plungerRange = 7.5f;
         [Tooltip("발사 실패 후 재발사 대기 (s)")]
         public float fireFailCooldown = 0.3f;
         [Tooltip("바닥에서 천장/벽 부착 시 유예 시간 (s)")]
@@ -45,9 +45,11 @@ namespace Pop.Player
         [Tooltip("해제 시 관성 배율")]
         public float releaseInertiaMultiplier = 1.0f;
         [Tooltip("부착 중 A/D 스윙 힘. 줄에 수직(접선) 방향 가속도 (m/s^2, 질량 무관)")]
-        public float swingForce = 20f;
+        public float swingForce = 4f;
 
         [Header("기절 (Stunned)")]
+        [Tooltip("공중(점프 · 해제 후 비행 · 낙하 · 발사 실패 중)에서 벽 · 천장에 부딪혀 기절하는 최소 충돌 속도 (m/s). 닿기 직전 속도 중 면 안쪽으로 향하는 성분이 이 값보다 커야 기절한다. 스치기나 벽에 붙어 A/D를 누르는 정도(한 스텝 약 0.3m/s)는 무시하도록 작게 둔다.")]
+        public float airStunMinImpactSpeed = 1f;
         [Tooltip("기절 중 바닥이 아닌데 거의 멈춘 채(벽 틈에 걸림) 이만큼 지나면 밀어서 빼낸다 (s)")]
         public float stuckNudgeTime = 0.4f;
         [Tooltip("끼임 탈출 속도 (m/s). 마지막 벽 접촉 법선 + 아래 방향")]
