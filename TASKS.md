@@ -1,10 +1,73 @@
 # Pop — 진행 상황 (새 세션은 여기부터 읽는다)
 
-3D 뚫어뻥 클라이밍 게임. 탐험가 다람쥐가 뚫어뻥을 붙이고 흔들고 떼며 산 정상의 도토리 나무까지 오른다. 난이도 아주 어려움.
+3D 뚫어뻥 클라이밍 게임. 탐험가 날다람쥐(2026-11-23부터, 활공은 없음)가 뚫어뻥을 붙이고 흔들고 떼며 산 정상의 도토리 나무까지 오른다. 난이도 아주 어려움.
 
 - 기획서(Notion): https://app.notion.com/p/3D-41674e10a7648088ae2bcfe8a9f88471
 - Unity 6000.3.25f1, URP, Input System. Unity 프로젝트 폴더는 `Pop/`
 - 프로젝트 메모(결정 · 규칙 요약): `Pop/ClaudeHand/NOTES.md`
+
+## 최신 (2026-11-23) 플레이어 캐릭터에 툰 셰이더 (사용자가 털 대신 툰을 고름. 캐릭터만, 환경 머티리얼은 그대로)
+- **셰이더** `Pop/Assets/_Game/Art/Shaders/PopToonCharacter.shader`("Pop/Toon Character", URP 17.3, Forward · Forward+ 모두, 렌더러 피처 없음) + `PopToonDepthPasses.hlsl`
+  - ToonForward: 부드러운 2단 램프(half-lambert, 경계만 흐림) + SH 환경광 + 크림색 림(빛 쪽이 조금 더 셈). **그림자는 받지 않음**(얼룩 방지), 드리우기만. 추가 광원은 안 씀
+  - Outline: `LightMode = SRPDefaultUnlit`(URP가 불투명 단계에서 그대로 그림), Cull Front, **화면 고정 두께**(1080p 기준 px, 해상도에 비례), 정점을 **카메라 반대로 `outlineDepthPush` m 밀어** 얇은 비막 · 챙에서 안 뚫고 나옴. 색 = outlineColor와 어둡게 한 알베도를 섞음
+  - ShadowCaster · DepthOnly · DepthNormals(SSAO용, Cull Off일 때 뒷면 법선 뒤집음)
+  - `_BaseColor`가 알베도 · 림 · 아웃라인에 모두 곱해져 **PlayerStunVisual(MPB _BaseColor 0.6) 그대로 동작**(코드 안 바꿈)
+- **설정 에셋** `Pop/Assets/_Game/Art/Shaders/ToonSettings_FlyingSquirrel.asset`(클래스 `Scripts/Rendering/ToonCharacterSettings.cs`, `Pop.Rendering`). 값은 여기서만 고치고 메뉴 **Pop/Dev/Squirrel/Apply Toon Material**로 머티리얼에 넣음. `useToon` 끄고 메뉴 → URP Lit으로 되돌아감(텍스처 · Lit 키워드 그대로 남아 있음)
+  - 최종값: normalStrength 0.25 · cull Back · shadeEdge 0.56 · shadeSoftness 0.10 · shadeColor (0.66,0.60,0.68) · lightStrength 0.85 · ambientStrength 0.5 · rim (1,0.92,0.76) 0.40 / edge 0.72 / softness 0.08 / litSide 0.35 · outline (0.16,0.11,0.09) albedoMix 0.45 · darken 0.35 · **1.5 px** · push **0.04 m**
+- **머티리얼**: `M_FlyingSquirrel.mat`의 셰이더만 바꿈(GUID 71ae3406… 그대로 → FBX remap · 씬 참조 유지, 씬 수정 없음). `Editor/SquirrelAnimationSetup.cs`: `Character.toonSettingsPath`(Flying만), `ApplyToon()`, Setup(1 Setup Mixamo Assets)이 EnsureMaterial 뒤에 ApplyToon을 불러 **재실행해도 툰 유지**(Setup 자체 재실행은 이번에 안 해 봄 — 그때 Wings 작업이 진행 중이었음)
+- **확인(Mountain Play, PC_Renderer Forward+, D3D12, 1920x1080)**: 셰이더 오류 · 경고 0, C# 오류 없음. 대기 · 활공 달리기 · 점프 · 낙하 · 기절, 시작 지점(회색 절벽 앞)과 T2_Ledge_04 통나무 위에서 전후 비교. 캐릭터 약 83px. 비막 · 모자 챙 · 스카프에서 아웃라인 뚫림 · 검은 삼각형 없음, 좌우 양쪽에서 비막 안 사라짐(cull Back 유지). 기절 어두워짐(0.6) 정상, 착지 뒤 원래대로. 평균 밝기는 Lit보다 약 +10%(기절은 같음)
+- **성능**: 캐릭터 몫 드로우 +5~6 / SetPass +6 / 삼각형 +270k(Lit: +4 / +1 / +220k). Outline 패스 1회 더, 전용 셰이더라 SetPass를 환경 Lit과 나눠 쓰지 못함
+- 그림: `Pop/Screenshots/toon_before_*.png` · `toon_after_*.png`(idle · run · jump · fall · stun · log_idle · log_run), `toon_after_close_glide_{left,right}_{game,above}.png`. `toon_after_close_runwings_*` · `toon_after_close_fall_membrane_*` · `probe_*.png`는 튜닝 전 낡은 그림
+- **남은 것 / 아쉬운 점**: 기절이 풀릴 때 "흰색 번쩍임"은 Lit · 툰 모두 실제로 안 보임(원래 _BaseColor가 이미 흰색이라 흰색으로 Lerp해도 그대로 — PlayerStunVisual 구조 문제). 보이게 하려면 셰이더에 `_FlashAmount`를 두고 PlayerStunVisual이 넣게 하면 됨. 림을 노멀맵 N 대신 기하 법선으로 계산하면 normalStrength를 다시 올릴 수 있음(지금은 털 노멀 때문에 생기는 림 얼룩을 0.25로 피함). 법선 이음매 아웃라인 틈은 게임 배율에서 안 보여 매끈한 법선 굽기는 안 함. Mobile_Renderer(Forward)에서는 Play 확인 안 함(같은 패스라 동작할 것). 사람 눈 확인은 아직
+
+## 최신 (2026-11-23) 달릴 때 활공 자세: 다리 정지 · 머리 고정 · 바닥에서 살짝 뜸 · 비막 펴고 가끔 퍼덕임 (애니메이션만)
+- **사용자 요청**: ① "달릴 때 날개를 펴고 간간히 퍼덕이면서 날게, 이동 모션만, 이동 높이 동일" → ② 수정 "달릴 때 다리는 움직이지 않고 머리도 흔들리지 않아야, 다리가 공중에 떠야 하고 앞으로 살짝 기울어지게". (①의 첫 구현 = 달리기 다리 그대로 + 팔만 덮는 레이어는 ②로 대체됨)
+- **방식**: Animator에 온몸을 덮는 **`Wings` 레이어**(Override, 기본 무게 0, 상태 WingsFlap)를 두고 `PlayerAnimationVisual`이 무게를 넣는다(바닥에서 Speed 1.5→4 m/s SmoothStep, 공중 · 매달림 0, `wingsBlendTime` 0.25초). 무게 1이면 달리기 클립이 완전히 덮인다. 이동 · 물리 · 캡슐 · Rigidbody · 튜닝 · 씬은 안 바꿈(컨트롤러 GUID 유지)
+- **에셋**(Setup이 코드로 만든다, `Art/Characters/FlyingSquirrel/Mixamo/`): `FlyingSquirrel_WingsFlap.anim`(2.4초 루프. Idle 첫 프레임의 Humanoid 커브 130개를 고정값으로 깔고 → RootQ = 정면 · RootT.x = 0(좌우 대칭) → 몸통 · 목 · 머리 근육 0(`GlideBody`) → 다리 고정 자세(`GlideLeg`) → 팔: 편 채 미끄러지다 1.6~2.1초에 두 번 퍼덕임(+28 / -36도) → 퍼덕일 때 엉덩이가 안 움직이게 RootT.y 보정) · `FlyingSquirrel_Wings.mask`(온몸) · `FlyingSquirrel.controller`(레이어 2개)
+- **코드**: `Editor/SquirrelAnimationSetup.cs`(`Character.wings` = Flying만 true, `EnsureWingsClip` · `EnsureWingsMask`, 상수 `WingsLoop · WingLevel 0.40 · WingFront 0.42 · WingTwist · WingStretch · WingElevation · GlideBody · GlideLeg · WingBodyCompUp/Down`), `Scripts/Player/PlayerAnimationVisual.cs`(`glideHover` 0.2 m = 보이는 모델(animator.transform)만 무게만큼 위로, `glideLean` 25 (2026-11-23 사용자 "25도로", 13에서 올림 · 옛 메모리 값이 남지 않게 필드 이름도 바꿈) = LateUpdate에서 엉덩이 뼈를 앞으로 돌림, `glideHeadCounter` 0.6. Wings 레이어가 없는 컨트롤러(예전 다람쥐)는 아무것도 안 함)
+- **알아둘 것**: 이 아바타의 근육 부호 — Arm Front-Back 0.30 = 정확히 옆 · 클수록 뒤, Upper Leg In-Out + = 벌림, Upper Leg Front-Back 1.0 = 뒤로 최대(약 30도), Foot Up-Down - = 발끝 폄. Humanoid RootT는 무게중심이라 팔 · 다리 자세를 바꾸면 엉덩이 높이가 따라 변한다. Player · Visual 스케일 0.6(바닥 = Player y - 0.6)
+- **검증**(Mountain Play, 달리는 중): 엉덩이 기준 발 위치 변화 0.000002 m 이하(다리 정지), 머리 y 범위 0.0011 m(퍼덕임 포함), 가장 낮은 발 뼈 = 지면 위 0.195 m(hover 0이면 -0.005 m), 기울임 엉덩이 13.0도 / 머리 5.2도. Player transform · Rigidbody y 0.60000 고정(hover 0.2와 0에서 같음), 캡슐 center (0,0,0) · height 2 · radius 0.5 불변. 가속 · 감속 때 무게 · hover 약 0.25초에 고르게, 멈춘 뒤 모델 localPosition 기준값과 차이 0, 점프 중 무게 0 · 오프셋 0 · Air 자세, 착지 후 다시 활공, 좌우 전환 정상. Setup 재실행으로 같은 결과(GUID 불변)
+- **남은 것 / 사용자 판단**
+  - 모습은 "엎드려 나는" 것이 아니라 선 채로 떠서 25도 숙인 자세다(다리가 짧아 뒤로 길게 안 뻗음). 게임 화면에서는 캐릭터가 약 70px이라 뜬 것 · 다리 정지는 보이지만 비막 · 퍼덕임은 작다. 꼬리는 Humanoid 뼈가 아니라 움직임 없음
+  - 안 한 시험: 줄에 매달린 상태(코드상 무게 0), 걷기 속도(0.9~1.5 m/s) 유지, 근접 확대 메시 검사
+
+## (2026-11-23) 뚫어뻥 줄이 몸통(가슴)에서 나오게 (사용자 "캐릭터를 바꾸면서 뚫어뻥 줄이 몸통 밖으로 나오게 됐어")
+- **원인**: 보이는 줄 시작점이 `transform.position`(캡슐 중심)이었는데 날다람쥐 몸은 캡슐 아래쪽에 있어서 매달린 자세에서 줄이 머리 위 허공에서 시작했다(예: 플레이어 y 7.29 / 가슴 6.85 / 머리 7.07)
+- **고침**: `PlungerController.RopeStart()`(새, public) = 다람쥐 Animator의 Humanoid 뼈 Chest(없으면 Spine → Hips → 플레이어 중심) + 바라보는 쪽으로 `ropeChestForward` 0.06 m, z는 플레이 평면. 뼈는 코드로 찾음(Awake, 없어지면 다시 찾음 — 씬 수정 없음), LateUpdate에서 읽어 애니메이션과 같은 프레임. 쓰는 곳: 줄 선 시작점 · 발사된 머리가 날아가기 시작하는 점 · 되감길 때 돌아오는 점. 인스펙터 `ropeFromChest`(끄면 예전처럼 중심) · `ropeChestForward`
+- **그대로**: 줄 물리(Rigidbody 기준 거리 제약) · 조준 레이 원점(`_rb.position`, 보이는 선이 없어 안 바꿈) · 사거리 · 튜닝 값
+- **Play 확인(Mountain, 패치 (12.5, 11.4) 아래)**: 매달림 · 흔들기 · 왼쪽 보기 · 낙하 중 부착(시작점 y 8.10 = 가슴, 예전 값 8.37) · 바닥에서 발사(원점 = 가슴 + 바라보는 쪽 0.06) 모두 가슴에서 시작. 오류 없음, 씬 안 바뀜, `Pop.BestClearTime` 안 건드림. 그림 `Pop/Screenshots/rope_chest_hang_gameview.png` · `rope_chest_hang_close.png` · `rope_chest_swing_left.png`
+- 남은 것: 줄은 z = 0 평면에 그려서 몸 앞이 아니라 몸 안(등 · 어깨 쪽)으로 들어가 보인다. 사람 눈 확인은 아직
+
+## 최신 (2026-11-23) 플레이어 캐릭터를 날다람쥐로 교체 (겉모습만)
+- **캐릭터는 이제 탐험가 날다람쥐**(Mixamo 리그, 팔다리 사이 비막 있음). **활공 기능은 일부러 넣지 않았다 (사용자 결정 2026-11-23)**: 이동 · 점프 · 뚫어뻥 · 튜닝 값은 그대로, 겉모습과 Animator만 바꿈
+- **새 에셋** `Pop/Assets/_Game/Art/Characters/FlyingSquirrel/`
+  - `Mixamo/FlyingSquirrel_Explorer_Mixamo.fbx`(스킨 모델, m 단위, 4.5만 삼각형, 뼈 25개, Humanoid, 메시 FlyingSquirrel · 슬롯 M_FlyingSquirrel) + `FlyingSquirrel@HappyIdle · @HappyWalk · @RunForward · @Jump · @FallingIdle.fbx`(Mixamo 원본, cm 단위. Humanoid라 단위 차이는 아바타 크기로 맞춰짐 — 엉덩이 높이 모델 0.19 m / 클립 0.18 m 확인)
+  - 클립: `FlyingSquirrel_Idle`(2.0 s, loop) · `_Walk`(1.1 s, loop) · `_Run`(0.9 s, loop) · `_JumpAir`(Jump 24~42프레임, 0.6 s, loop 아님) · `_Fall`(0.7 s, loop) — 예전 다람쥐 세트와 길이 · 루프 같음
+  - `Mixamo/FlyingSquirrel.controller`(새 Animator: Locomotion[Idle 0 / Walk 0.9 / Run 6 m/s 3배속] · Air[JumpT] · Fall, 파라미터 Speed · Grounded · JumpT · VSpeed — 예전 `Squirrel.controller`와 같은 구조)
+  - `Textures/base_color.png`(4096, 오른쪽 어깨 스카프 고친 판) · `normal.png`(Normal map) · `orm.png`(linear) · `metallic_smoothness.png`(orm에서 만듦: R = ORM.B, A = 1 - ORM.G, linear). 가져오기 최대 2048
+  - `Materials/M_FlyingSquirrel.mat`(URP Lit, base + normal + metallic_smoothness, Smoothness 0.6 = 예전 다람쥐와 같음). FBX의 M_FlyingSquirrel 슬롯을 이 머티리얼로 remap
+- **코드** `Editor/SquirrelAnimationSetup.cs`를 캐릭터 설정(`Character`: 폴더 · 모델 · 클립 접두어 · 컨트롤러 · 머티리얼 · 텍스처 폴더 · RunTimeScale) 두 벌로 일반화: `Flying`(기본) · `Classic`(예전 다람쥐)
+  - 메뉴 **Pop/Dev/Squirrel/1 Setup Mixamo Assets** · **2 Replace Player Visual (open scene)** = 날다람쥐. **Pop/Dev/Squirrel/Old Squirrel/1 ... · 2 ...** = 예전 다람쥐로 되돌리기(같은 일을 예전 에셋으로)
+  - Setup: 텍스처 가져오기 설정 + metallic_smoothness 생성 + 머티리얼(있으면 고쳐 씀) + FBX Humanoid · 클립 설정 + 컨트롤러. 컨트롤러가 이미 있으면 파일 내용만 바꿔 GUID 유지(Setup을 다시 해도 씬 참조가 안 끊김)
+  - Replace: Player/Visual 아래의 예전 다람쥐 · 날다람쥐 인스턴스를 모두 지우고 새로 넣음(멱등, 두 번 실행해도 자식 1개). 키 1.2 m · 발 = 캡슐 바닥 · 엉덩이 = 캡슐 축, PlayerAnimationVisual.animator 연결, Root Motion 끔. `ReplaceInActiveScene(ch, save: false)`로 저장 없이도 가능
+  - `Scripts/Dev/AnimCheck.cs`: `TPoseHandSpan`을 public 필드로(모델마다 다름). 날다람쥐는 바인드 자세가 팔을 내린 자세라 이 손 거리 검사는 공중 자세에서 의미가 없다(0으로 두면 됨)
+- **씬**: Mountain · Prototype 모두 `Player/Visual/FlyingSquirrel`로 교체해 저장(예전 `Squirrel` 인스턴스 삭제). 로컬 스케일 2.165, 구운 메시 높이 1.200 m, 발 y = 캡슐 바닥(차이 0.000), PlayerFacingVisual.visual · PlayerStunVisual · PlayerAnimationVisual.animator 연결 확인. Player 밖은 안 건드림
+- **예전 다람쥐 에셋은 그대로 둠**: `Art/Characters/Squirrel/`(Mixamo FBX · Squirrel.controller · 텍스처 · M_Squirrel_Explorer_Rig.mat). 씬에서는 더 안 씀
+- **Play 확인(Mountain)**: AnimCheck — 대기 · 이동 6 m/s · 방향 전환(Visual yaw 110 / 250) · 점프(체공 1.02 s, 높이 1.96 m, Air 자세가 JumpT로 진행) · 기절 색 0.6 → 착지 뒤 1.0 · 긴 낙하(vy -20 → Fall) → 착지 Locomotion. 씬을 다시 불러 첫 프레임부터 3300프레임 동안 바인드 자세(T자) 0프레임(첫 프레임부터 Idle). 자세별 그림(대기 · 걷기 · 달리기 · 점프 · 낙하 × 옆 · 앞 · 뒤)에서 비막이 튀거나 찢어진 곳 없음. Prototype은 Play로 서 있는 것까지만 확인. 내 변경으로 생긴 경고 · 오류 없음
+- **발 미끄러짐**: Run 1배속 디딤 발 속도 약 1.55 m/s(예전 다람쥐 1.57 m/s와 같음, 같은 방법으로 잼) → 3배속 약 4.65 m/s, 6 m/s에서 약 22% 미끄러짐. 예전과 같아서 RunTimeScale 3.0 그대로(딱 맞추려면 약 3.9배속인데 발이 너무 빨라짐)
+- **남은 것 / 아쉬운 점**: 등 쪽(조끼 아래 · 비막 뿌리) 텍스처가 얼룩지고 엉덩이 옆에 밝은 틈처럼 보이는 곳이 있음(게임 카메라에서는 등이 안 보임). 팔 옆 비막에 텍스처 늘어진 줄무늬. Fall 자세는 예전처럼 머리부터 떨어지는 모양, 점프 정점은 앞으로 숙인 자세. 매달리기 · 기절 · 착지 전용 동작 없음(예전과 같음). 사용자 눈 확인은 아직
+
+## 최신 (2026-11-23) Esc 일시정지 (사용자 "게임중 ESC를 누르면 게임이 일시정지되고 돌아가기 게임종료 버튼 두개")
+- **동작**: 한 판 중(RunManager가 있는 씬 = 지금은 Mountain만. Prototype · Title에는 GameUI가 없어 일시정지 없음) Esc → 어두운 배경 + "일시정지" + [돌아가기] · [게임 종료] (+ 작은 "Esc 계속하기"). Esc 다시 · [돌아가기] → 계속. [게임 종료] → Application.Quit(에디터에서는 Play 멈춤)
+- **일시정지 중**: Time.timeScale 0(들어가기 전 값을 기억했다가 그대로 되돌림, 1로 강제 안 함) · 타이머 멈춤(RunManager가 `PauseMenu.IsPaused`면 안 셈) · 게임 조작 입력 무시(`GameInput.GameplayBlocked` → MoveX · Jump · Fire · LookY 0/false, PlayerController · PlungerController Update는 바로 return이라 이동 입력 · 점프 버퍼가 그대로 남아 계속할 때 끊김 없음) · 조준 커서 숨김 · 시스템 커서 보임(계속하면 이전 Cursor.visible · lockState로 되돌림)
+- **소리**: `AudioListener.pause`로 효과음 · 기절 반복음 · 징글이 멈췄다가 그 자리에서 이어짐. **BGM은 50%로 줄여 계속 틂**(BGM 소스 ignoreListenerPause, 설정 `pauseBgmVolumeMultiplier` 0.5 · `pauseBgmFadeTime` 0.2 s). UI 클릭음은 이제 전용 AudioSource `UI`(ignoreListenerPause, PlayOneShot)로 남 → 일시정지 중에도 들림. 새 `GameAudio.HookButton(Button)`: PauseMenu가 Start에서 자기 버튼 둘을 한 번 더 걸어 둠(중복은 거름)
+- **Esc가 안 먹는 때**: 골인 뒤(RunManager.Cleared · 조작 잠금), 디버그 순간이동 얼리기 중(`PauseMenu.DebugFreeze`, DebugTeleportWindow가 켜고 끔), timeScale이 이미 0일 때. 일시정지 중에 얼리기를 켜면 계속해도 0으로 남고, 얼림을 풀 때 일시정지 전 timeScale로 돌아감(얼림을 일시정지 중에 풀면 일시정지가 되돌림)
+- **입력**: `GameInput.PausePressed`(Keyboard Esc, 다른 키와 같은 방식) + 입력 액션 에셋 `Pop/Assets/InputSystem_Actions.inputactions`의 Player 맵에 `Pause`(Button, <Keyboard>/escape)를 더함(게임 코드는 지금처럼 GameInput만 읽음)
+- **코드**: 새 `Pop/Assets/_Game/Scripts/Game/PauseMenu.cs`(GameUI 오브젝트, RunManager 옆, 실행 순서 -60). 바꾼 것: `GameInput.cs` · `RunManager.cs`(타이머 한 줄) · `PlayerController.cs` · `PlungerController.cs`(일시정지면 return 한 줄씩, 이동 · 튜닝 값 그대로) · `GameAudio.cs` · `GameAudioSettings.cs`(필드 2개) · `Editor/DebugTeleportWindow.cs`(Freeze/Unfreeze) · `Editor/GameUIBuilder.cs`(메뉴 **Pop/Dev/Add Pause Menu**: 열린 씬 GameUI에 PausePanel + PauseMenu, 있으면 건너뜀. Add Mountain Game UI도 부름)
+- **씬**: Mountain.unity의 GameUI 아래에 `PausePanel`(꺼진 채, 마지막 자식)과 PauseMenu 컴포넌트만 더해 저장. 레벨 · EnvVisual은 안 건드림
+- **Play 확인(Mountain, 키 · 마우스는 Input System 이벤트로 흉내)**: Esc → 패널 · timeScale 0 · 타이머 8.134에서 멈춤 · BGM 0.35 → 0.175 · 시스템 커서 보임 / Esc 다시 → 계속(커서 숨김, 타이머 이어서). 공중(Falling)에서 일시정지 → 10초 동안 위치 · 타이머(15.6719) 그대로 → [돌아가기]를 마우스로 누름: 누르는 프레임에 발사 없음(Shot None, Fire 소리 없음), 떼면 계속 · 클릭음 · 속도 그대로 · 타이머 15.67에서 이어짐. timeScale 0.5에서 일시정지 → 계속하면 0.5. 얼리기 흉내(DebugFreeze + 0) 중 일시정지 안 됨. 골인(RunManager.Clear) 뒤 Esc → 아무것도 안 함. [게임 종료] 클릭 → Play 멈춤. 경고 · 오류 없음. `Pop.BestClearTime`은 시험 전에 없었고 골인 시험 뒤 지움(지금 없음)
+- 그림: `Pop/Screenshots/pause_menu_mountain.png`
+- 남은 것: 사람 손으로 Esc 확인(실제 키 · 마우스), 기절 반복음 멈춤은 AudioListener.pause로 처리(기절 중 일시정지는 따로 안 해 봄), DebugTeleportWindow 얼리기와 겹치는 경우는 코드로만 확인, Prototype에는 HUD가 없어 일시정지도 없음(필요하면 Prototype에서 Pop/Dev/Add Mountain Game UI → 골인 트리거는 없으면 건너뜀)
 
 ## 최신 (2026-11-23) 소리 (BGM · 효과음 · UI · 징글)
 - **구조**: `Pop/Assets/_Game/Scripts/Audio/GameAudio.cs`(싱글톤, 씬에 안 둠) + 설정 `Pop/Assets/_Game/Scripts/Audio/GameAudioSettings.cs` → 에셋 `Pop/Assets/_Game/Tuning/Resources/GameAudioSettings.asset`
@@ -19,7 +82,7 @@
   - 점프 → `SFX_Jump_0x_cut` — `PlayerController.Jumped`(새 이벤트, 일반 점프만)
   - 착지 → `SFX_Land_0x_cut`, 아래 속도로 볼륨: GameAudio.FixedUpdate(실행 순서 100, PlayerController 다음)가 공중일 때 마지막 속도를 기억했다가 IsGrounded가 켜지는 스텝에 씀. 잰 값: 0.2 m 턱 ≈ 2.4 m/s(소리 없음), 0.3 m 2.9, 0.5 m 3.9, 평지 점프 7.8
   - 기절 시작(부착 중 접촉 기절 · 공중 충돌 기절 모두) → `SFX_Hit_Wall_0x_cut` 한 번 + `SFX_Stun_Loop_0x_cut` 반복 — `PlayerController.StateChanged`(→ Stunned). Stunned에서 나가면 0.15초 페이드 아웃. 리스폰(Respawned) · 씬 바뀜 · 플레이어 없어짐에도 멈춤
-  - UI 버튼 전부 → `UI_Button_Click_0x_cut`
+  - UI 버튼 전부 → `UI_Button_Click_0x_cut` (2026-11-23부터 전용 소스 `UI`, 일시정지 중에도 남)
   - BGM: Title → `BGM_Title_01/02`, Mountain · Prototype → `BGM_Climb_01/02` (무작위, loop, 1.5초 크로스페이드). 같은 종류 씬끼리는 이어서 틀고, 떨어짐 · 리스폰에는 다시 시작 안 함
   - 골인 → BGM 0.5초에 0으로 + `Jingle_Clear_0x_cut` — `RunManager.RunCleared`(새 이벤트, Clear() 끝). 다시 하기 · 타이틀로 가면 새 BGM이 크로스페이드로 들어온다(징글은 0.3초 페이드)
 - **튜닝**: `Tuning/Resources/GameAudioSettings.asset` 인스펙터 — 클립 목록, 볼륨(BGM 0.35 · SFX 0.8 · UI 0.6 · 징글 0.8), 이벤트별 배율(fire · attach · release · jump 0.8 · land · hitWall · stunLoop 0.6 · uiClick), pitchVariation 0.05, bgmCrossfadeTime 1.5, goalBgmVolumeMultiplier 0 · goalBgmFadeTime 0.5, stunLoopFadeOut 0.15, landMinImpactSpeed 2.8 · landFullImpactSpeed 9 · landMinVolume 0.3, titleScenes · climbScenes(씬 이름), sfxPoolSize 10, **debugLog**(켜면 `[GameAudio] <이벤트> -> <클립>` 로그)
@@ -63,7 +126,7 @@
 - 확인 그림: `Pop/Screenshots/env_overview.png`, `env_section1_foothills.png` ~ `env_section4_summit.png`, Game 뷰 `env_play_bot_t8.png`(통나무 위) · `env_game_player_wedge-1.png`(쐐기 바위 옆)
 - 남은 것: 사용자 눈 확인, 통나무 그루터기 끝 · 메사 가장자리 절충이 괜찮은지, 경로 데이터를 지금 레벨에 맞추면 봇 완주 검증 가능
 
-## 최신 (2026-11-23) 다람쥐 Mixamo 리깅 · 대기 / 걷기 · 달리기 / 점프 애니메이션
+## 최신 (2026-11-23) 다람쥐 Mixamo 리깅 · 대기 / 걷기 · 달리기 / 점프 애니메이션 (예전 다람쥐 — 지금 캐릭터는 맨 위 날다람쥐 항목)
 - **모델**: `Pop/Assets/_Game/Art/Characters/Squirrel/Mixamo/Squirrel_Explorer_Mixamo.fbx` (4.2만 삼각형, Mixamo 뼈대 25개 · 손가락 없음, Humanoid). VARCO 리그 FBX(45 MB, 24.6만 삼각형)는 참조가 없어져 지웠다. 재질 · 텍스처는 그대로 `M_Squirrel_Explorer_Rig.mat`
   - 만든 순서: 예전 FBX에서 뼈대를 떼고 Blender로 17%까지 줄임 → Mixamo 자동 리깅(OBJ, 100배 크기로 올려야 함) → Blender에서 스킨 고침 → FBX
   - Mixamo 리깅 문제와 고친 것: 꼬리 위쪽이 왼팔에 붙어 휘날림 → 꼬리 전체를 Hips에 고정(꼬리뼈 없음, 흔들림 없음). 볼 · 턱이 몸통/어깨에 붙음 → Head로. 팔 가중치가 몸통에 번짐 → Spine2로
@@ -87,7 +150,7 @@
 - **최고 기록 저장**: PlayerPrefs 키 `Pop.BestClearTime`(float 초, 짧을수록 좋음). 코드 `Scripts/Game/ClearRecord.cs`(`ClearRecord.ClearBest()`로 지움)
 - **만드는 메뉴**: Pop/Dev/Build Title Scene(Title.unity 새로 만들고 Build Settings 순서 맞춤), Pop/Dev/Add Mountain Game UI(열린 Mountain에 GameUI · EventSystem · GoalTrigger를 더함, 이미 있으면 건너뜀, 레벨은 안 건드림). 코드 `Editor/GameUIBuilder.cs`. `MountainBuilder.Summit()`도 이제 GoalTrigger를 만든다(Rebuild 메뉴는 이번에 실행하지 않음 — 손 편집 보존)
 - **시험 방법**: Title.unity에서 Play → [시작] → HUD 타이머 확인 → 메뉴 Pop/Debug/Teleport의 "시작 · 정상"에서 Summit_Plateau 또는 AcornTree_Goal (옆) → 클리어 화면. 정상 바로 아래(T7_Ledge_23 (7) 등)로 순간이동하면 골인되지 않아야 한다. 기록 지우기: Play 중이 아니어도 `PlayerPrefs.DeleteKey("Pop.BestClearTime")`
-- Esc(일시정지/타이틀)는 아직 없음
+- ~~Esc(일시정지/타이틀)는 아직 없음~~ → 2026-11-23 Esc 일시정지 추가(맨 위 항목)
 
 ## 최신 (2026-11-13)
 기획서 🔴 핵심 항목이 모두 들어갔다. 시험 씬은 `Pop/Assets/_Game/Scenes/Prototype.unity`(2026-11-23부터 Build Settings 2번).
@@ -101,7 +164,7 @@
 - **떨어지는 방식 (사용자 결정 2026-11-20: 리스폰 아님)**: 실패하면 순간이동 없이 몸이 그대로 아래로 떨어진다. 앵커 바위는 지붕이 55°라 설 수 없어 튕겨 미끄러지고, 설 수 있는 곳은 경로의 발판(층 끝 돌아서는 계단, 3·4·7·8층 가운데 쉬는 발판)과 맨 아래 시작 분지(5° 바닥, 걸어서 시작점으로)뿐이다. 층 가장자리에서 미끄러지면 몇 m, 가운데에서 크게 떨어지면 수십~백여 m 아래 발판이나 시작 분지까지 떨어진다. KillZone은 벽 바깥·아주 아래 안전망(SafetyNet_*)만 남겼고 경로 위에는 없다
 - 맵 고치기: `Editor/MountainBuilder.cs`의 Design() 수정 → 메뉴 Pop/Dev/Rebuild Mountain Level → Play에서 `AddComponent<Pop.Dev.RouteBot>().Run(0,-1,false)`로 등반 재검증(봇 완주 확인), 낙하 시험은 `Pop.Dev.DropTester`
 - 남은 것: ~~골인 판정 없음~~(2026-11-23 GoalTrigger 추가), 사람 손 타이밍 여유 미확인(앵커를 붙일 수 있는 시간이 고지 약 0.4초), 기절 바위 실제 접촉 미시험, 가운데 실수는 손실이 큼(쉬는 발판이 바로 아래에 있을 때만 적게 잃음)
-- 플레이어 = VARCO 탐험가 다람쥐(2026-11-23부터 Mixamo 리그 + 애니메이션, 맨 위 항목), 정상 = VARCO 도토리 나무
+- 플레이어 = 탐험가 날다람쥐(2026-11-23 교체, 맨 위 항목. 그 전은 VARCO 탐험가 다람쥐 Mixamo 리그), 정상 = VARCO 도토리 나무
 - **디버그 순간이동 창** (사용자 "에디터 상에서"): 메뉴 **Pop/Debug/Teleport** (에디터 창, Play 중에만). 목록 버튼(시작·정상 / 구간 / 발판 / 앵커 / 경로 데이터) · ±10 m · X·Y 이동 · Scene 뷰 클릭 순간이동 · 순간이동 뒤 얼리기([계속]으로 풂). 게임 키는 안 씀(입력 규칙 유지). 코드: `Editor/DebugTeleportWindow.cs`, `PlayerController.DebugTeleport(Vector3)`(줄 해제 · 기절 해제 · 속도 0). Play 시험은 아직
 
 ## 한 일

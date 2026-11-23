@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>POP 발표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<style>
+  @page { size: 1920px 1080px; margin: 0; }
+  :root {
+    --forest: #2e3b22;
+    --forest-2: #3d4d2e;
+    --cream: #fbf4e4;
+    --cream-2: #f1e6cc;
+    --brown: #3b2a1a;
+    --brown-soft: #6b5640;
+    --acorn: #a3561a;
+    --leaf: #7c9a3c;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--cream); }
+  body {
+    font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    color: var(--brown);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    word-break: keep-all;
+  }
+  .slide {
+    width: 1920px; height: 1080px; position: relative; overflow: hidden;
+    background: var(--cream);
+    padding: 88px 120px 80px;
+    page-break-after: always; break-after: page;
+    display: flex; flex-direction: column;
+  }
+  .slide:last-child { page-break-after: auto; break-after: auto; }
+  .slide.dark { background: var(--forest); color: var(--cream); }
+
+  /* header */
+  .kicker { font-size: 26px; font-weight: 700; letter-spacing: .12em; color: var(--acorn); margin-bottom: 14px; }
+  .dark .kicker { color: #e0a462; }
+  h2 { font-size: 68px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; }
+  .lead { font-size: 32px; color: var(--brown-soft); margin-top: 18px; font-weight: 500; }
+  .dark .lead { color: #d9d0b8; }
+  .head { margin-bottom: 48px; }
+  .pageno { position: absolute; right: 64px; bottom: 40px; font-size: 22px; color: var(--brown-soft); font-weight: 600; }
+  .dark .pageno { color: #b6ae96; }
+  .bar { position: absolute; left: 0; top: 0; width: 18px; height: 100%; background: var(--acorn); }
+  .dark .bar { background: var(--leaf); }
+
+  /* body */
+  .body { flex: 1; display: flex; gap: 64px; min-height: 0; }
+  .col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  ul.b { list-style: none; }
+  ul.b li { font-size: 34px; line-height: 1.4; padding-left: 36px; position: relative; margin-bottom: 20px; }
+  ul.b li::before { content: ""; position: absolute; left: 4px; top: 18px; width: 14px; height: 14px; border-radius: 50%; background: var(--acorn); }
+  .dark ul.b li::before { background: #e0a462; }
+  ul.b li small { display: block; font-size: 26px; color: var(--brown-soft); margin-top: 4px; }
+  .dark ul.b li small { color: #cfc6ad; }
+  ul.b.tight li { font-size: 30px; margin-bottom: 14px; }
+  ul.b.tight li::before { top: 16px; }
+  b, strong { font-weight: 800; }
+  .ac { color: var(--acorn); }
+  .dark .ac { color: #e9b072; }
+
+  .shot { width: 100%; border-radius: 18px; display: block; object-fit: cover; box-shadow: 0 10px 30px rgba(59,42,26,.25); }
+  .cap { font-size: 22px; color: var(--brown-soft); margin-top: 12px; }
+  .dark .cap { color: #cfc6ad; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; }
+  .chip { background: var(--cream-2); border-radius: 999px; padding: 10px 24px; font-size: 26px; font-weight: 600; }
+  .key { display: inline-block; min-width: 64px; text-align: center; padding: 6px 16px; border-radius: 10px; background: var(--brown); color: var(--cream); font-weight: 700; font-size: 26px; margin-right: 12px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .stat { background: #fff8ea; border: 3px solid var(--cream-2); border-radius: 20px; padding: 24px 28px; }
+  .stat .n { font-size: 60px; font-weight: 800; color: var(--acorn); line-height: 1.1; }
+  .stat .l { font-size: 24px; color: var(--brown-soft); margin-top: 6px; font-weight: 600; }
+  .dark .stat { background: var(--forest-2); border-color: #4e6040; }
+  .dark .stat .l { color: #d9d0b8; }
+
+  table.t { border-collapse: collapse; width: 100%; font-size: 27px; }
+  table.t th { text-align: left; background: var(--forest); color: var(--cream); padding: 14px 20px; font-weight: 700; }
+  table.t td { padding: 13px 20px; border-bottom: 2px solid var(--cream-2); }
+  table.t tr:nth-child(even) td { background: #fff8ea; }
+  table.t td.m { color: var(--brown-soft); font-size: 24px; }
+
+  table.t.big { font-size: 31px; }
+  table.t.big th { padding: 20px 24px; }
+  table.t.big td { padding: 24px 24px; }
+  table.t.big td.m { font-size: 27px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 32px; }
+  .card { background: #fff8ea; border: 3px solid var(--cream-2); border-radius: 20px; padding: 26px 32px; }
+  .card .ct { font-size: 34px; font-weight: 800; color: var(--acorn); margin-bottom: 8px; }
+  .card .cd { font-size: 27px; line-height: 1.45; }
+  .cards.lg { gap: 34px 36px; }
+  .cards.lg .card { padding: 36px 40px; min-height: 190px; }
+  .cards.lg .ct { font-size: 40px; margin-bottom: 12px; }
+  .cards.lg .cd { font-size: 30px; }
+  .flow { display: flex; align-items: center; gap: 18px; }
+  .flow .step { background: var(--forest); color: var(--cream); border-radius: 16px; padding: 18px 26px; font-size: 30px; font-weight: 700; white-space: nowrap; }
+  .flow .step.alt { background: var(--acorn); }
+  .flow .arr { font-size: 36px; color: var(--acorn); font-weight: 800; }
+
+  .note { background: #fff8ea; border-left: 10px solid var(--acorn); border-radius: 12px; padding: 22px 28px; font-size: 28px; line-height: 1.45; }
+  .dark .note { background: var(--forest-2); border-left-color: #e0a462; }
+</style>
+</head>
+<body>
+
+<!-- 1. Title -->
+<section class="slide" style="padding:0;">
+  <img src="images/05_summit.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-view-box:inset(11% 0% 0% 0%);">
+  <div style="position:absolute;inset:0;background:linear-gradient(90deg, rgba(46,59,34,.96) 0%, rgba(46,59,34,.88) 38%, rgba(46,59,34,.15) 66%, rgba(46,59,34,0) 100%);"></div>
+  <div style="position:relative;padding:150px 0 0 140px;color:var(--cream);">
+    <div style="font-size:30px;font-weight:700;letter-spacing:.2em;color:#e9b072;">3D 뚫어뻥 클라이밍 게임</div>
+    <div style="font-size:260px;font-weight:900;line-height:1;letter-spacing:-0.02em;color:#ffd24a;margin-top:24px;text-shadow:0 6px 0 #7a3f12;">POP</div>
+    <div style="font-size:54px;font-weight:700;margin-top:40px;">다람쥐, 뚫어뻥 하나로<br>도토리 나무까지</div>
+    <div style="font-size:28px;margin-top:56px;color:#d9d0b8;line-height:1.6;">Unity 6 · URP · Windows<br>2026.11 · 개발 Shaun1667 · itch.io namuletta</div>
+  </div>
+</section>
+
+<!-- 2. 게임 소개 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">01 · 게임 소개</div><h2>탐험가 다람쥐, 산 정상의 도토리 나무로</h2></div>
+  <div class="body">
+    <div class="col" style="flex:0.95;">
+      <ul class="b">
+        <li><b>장르</b> 3D 물리 기반 플랫폼 / 클라이밍<small>측면 시점, 한 평면 위에서만 움직임</small></li>
+        <li><b>목표</b> 뚫어뻥으로 산 정상의 도토리 나무까지</li>
+        <li><b>핵심 재미</b> 붙이고 → 흔들고 → 타이밍 맞춰 떼기</li>
+        <li><b>난이도</b> <span class="ac">아주 어려움 · 체크포인트 없음</span></li>
+        <li><b>플랫폼</b> Windows (Unity 6000.3, URP)</li>
+        <li><b>레퍼런스</b> Getting Over It · Super Bunny Man · Ria's Hook<small>차별점: 갈고리 대신 뚫어뻥</small></li>
+      </ul>
+    </div>
+    <div class="col" style="flex:1.05;">
+      <img class="shot" src="images/04_high.png" style="height:540px;object-view-box:inset(12% 0% 0% 30%);">
+      <div class="cap">정상 바로 아래 — 오른쪽이 목표인 도토리 나무</div>
+      <div style="margin-top:30px;display:flex;flex-wrap:wrap;gap:18px 34px;font-size:26px;">
+        <span><span class="key">A / D</span>이동 · 흔들기</span>
+        <span><span class="key">Space</span>점프 · 해제+점프</span>
+        <span><span class="key">클릭</span>발사 / 해제</span>
+        <span><span class="key">W / S</span>시점 위아래</span>
+      </div>
+    </div>
+  </div>
+  <div class="pageno">2</div>
+</section>
+
+<!-- 3. 핵심 메카닉 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">02 · 핵심 메카닉</div><h2>뚫어뻥: 발사 · 부착 · 흔들기 · 해제</h2></div>
+  <div class="flow" style="margin-bottom:44px;">
+    <div class="step">발사</div><div class="arr">→</div>
+    <div class="step">착! 부착</div><div class="arr">→</div>
+    <div class="step">A/D 흔들기</div><div class="arr">→</div>
+    <div class="step">클릭 / Space 해제</div><div class="arr">→</div>
+    <div class="step alt">날아가기</div><div class="arr">→</div>
+    <div class="step alt">공중 재부착</div>
+  </div>
+  <div class="body">
+    <div class="col" style="flex:1.1;">
+      <ul class="b tight">
+        <li>캐릭터 → 마우스 커서 방향 Raycast로 조준</li>
+        <li>줄 = 늘어나지 않는 로프, 길이 = 발사 순간 거리 → 진자 운동</li>
+        <li>바닥에서 붙이면 0.4 m 당겨 떠오름 (0.2초 유예)</li>
+        <li>클릭 해제 = 속도 유지 · Space 해제 = 점프 힘 추가</li>
+        <li>공중에서 바로 다시 붙이기 가능 (유예 없음)</li>
+        <li>조준 커서 색: <b style="color:#3f8a2e">초록</b> 부착 가능 · <b style="color:#b3352a">빨강</b> 불가 · <b style="color:#7d7d7d">회색</b> 사거리 밖</li>
+      </ul>
+      <div class="stats" style="margin-top:14px;gap:18px;">
+        <div class="stat" style="padding:18px 20px;"><div class="n" style="font-size:48px;">7.5 m</div><div class="l">사거리</div></div>
+        <div class="stat" style="padding:18px 20px;"><div class="n" style="font-size:48px;">4</div><div class="l">흔들기 힘</div></div>
+        <div class="stat" style="padding:18px 20px;"><div class="n" style="font-size:48px;">0.3 초</div><div class="l">실패 쿨타임</div></div>
+        <div class="stat" style="padding:18px 20px;"><div class="n" style="font-size:48px;">×1.6</div><div class="l">중력</div></div>
+      </div>
+      <div class="cap">사거리 15 → 7.5 m, 흔들기 힘 20 → 4: 플레이해 보고 직접 줄인 값</div>
+    </div>
+    <div class="col" style="flex:0.9;">
+      <img class="shot" src="images/03_swing.png" style="height:520px;object-view-box:inset(14% 22% 16% 26%);">
+      <div class="cap">쐐기 바위 밑 패치에 붙어 흔들기 (초록 커서 = 부착 가능)</div>
+    </div>
+  </div>
+  <div class="pageno">3</div>
+</section>
+
+<!-- 4. 실패와 긴장감 -->
+<section class="slide dark">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">03 · 실패와 긴장감</div><h2>부딪히면 기절, 기절하면 그대로 추락</h2></div>
+  <div class="body">
+    <div class="col" style="flex:1.05;">
+      <ul class="b tight">
+        <li><b>부착 중</b> 벽 · 천장에 닿으면 → 해제 + 기절<small>붙은 그 면이어도 기절 (기획서를 고친 결정) · 바닥은 해제만</small></li>
+        <li><b>공중에서도</b> 가파른 면(45° 넘음)에 1 m/s 넘게 부딪히면 기절</li>
+        <li><b>기절</b> 조작 전부 불가, 바닥에 착지해야만 풀림<small>머리 위 노란 별 + 어둡게, 풀릴 때 번쩍</small></li>
+        <li><b>리스폰 없음</b> 실패하면 몸이 그대로 아래로 떨어진다<small>앵커 바위 지붕은 55°라 설 수 없음 → 몇 m ~ 백여 m 추락</small></li>
+      </ul>
+      <div class="note" style="margin-top:18px;">《Getting Over It》처럼 잃은 높이를 다시 올라가는 긴장감 — 설 수 있는 곳은 경로의 발판과 맨 아래 시작 분지뿐</div>
+    </div>
+    <div class="col" style="flex:0.95;">
+      <img class="shot" src="images/06_stun.png" style="height:540px;object-view-box:inset(40% 22% 4% 31%);">
+      <div class="cap">기둥에 부딪혀 기절한 다람쥐 (머리 위 노란 별)</div>
+    </div>
+  </div>
+  <div class="pageno">4</div>
+</section>
+
+<!-- 5. 레벨 디자인 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="body" style="gap:72px;">
+    <div style="flex:0 0 420px;display:flex;flex-direction:column;align-items:center;">
+      <img src="images/v2_00_Overview.png" style="height:880px;border-radius:14px;box-shadow:0 10px 30px rgba(59,42,26,.25);">
+      <div class="cap">Mountain 그레이박스 전체 (아래 → 위)</div>
+    </div>
+    <div class="col">
+      <div class="kicker">04 · 레벨 디자인</div>
+      <h2 style="margin-bottom:34px;">Mountain: 9층 지그재그 탑</h2>
+      <div class="stats" style="margin-bottom:34px;">
+        <div class="stat"><div class="n">213 m</div><div class="l">정상 발판 높이</div></div>
+        <div class="stat"><div class="n">9층</div><div class="l">층마다 방향 전환</div></div>
+        <div class="stat"><div class="n">28개</div><div class="l">앵커 바위</div></div>
+        <div class="stat"><div class="n">89 m</div><div class="l">탑 폭 (좌우 벽)</div></div>
+      </div>
+      <table class="t" style="margin-bottom:30px;">
+        <tr><th>구간</th><th>층</th><th>높이</th></tr>
+        <tr><td>기슭</td><td>1 ~ 2층</td><td class="m">0 ~ 46 m</td></tr>
+        <tr><td>중턱 사슬</td><td>3 ~ 5층</td><td class="m">46 ~ 115 m</td></tr>
+        <tr><td>고지 · 작은 패치 / 기절 바위</td><td>6 ~ 8층</td><td class="m">115 ~ 188 m</td></tr>
+        <tr><td>정상 질주 → 도토리 나무</td><td>9층</td><td class="m">188 ~ 215 m</td></tr>
+      </table>
+      <ul class="b tight">
+        <li><b>검증</b> RouteBot이 경로 데이터대로 자동 등반 · DropTester로 낙하 지점 시험</li>
+        <li>레벨은 코드(MountainBuilder)로 만들고, 그 위에 손으로 발판 · 앵커를 고침</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pageno">5</div>
+</section>
+
+<!-- 6. 아트 파이프라인 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">05 · 아트 파이프라인</div><h2>VARCO로 만든 캐릭터 · 나무 · 환경</h2></div>
+  <div class="body">
+    <div class="col" style="flex:1.15;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
+        <img class="shot" src="images/concept_08_wedge_rock_grey.png" style="height:260px;background:#fff;object-fit:contain;padding:16px;">
+        <img class="shot" src="images/concept_02_log_ledge.png" style="height:260px;background:#fff;object-fit:contain;padding:16px;">
+        <img class="shot" src="images/concept_05_mesa_plateau.png" style="height:260px;background:#fff;object-fit:contain;padding:16px;">
+      </div>
+      <div class="cap">컨셉 그림 → VARCO 3D 모델 (쐐기 바위 · 통나무 발판 · 메사)</div>
+      <img class="shot" src="images/profile_check.png" style="height:300px;margin-top:26px;background:#fff;object-fit:contain;object-view-box:inset(22% 4% 30% 4%);">
+      <div class="cap">정면 실루엣 확인 — 쐐기 바위는 55° 삼각형 단면 그대로</div>
+    </div>
+    <div class="col" style="flex:0.85;">
+      <ul class="b tight">
+        <li><b>VARCO 3D</b> 탐험가 다람쥐 · 도토리 나무 · 환경 모델 6종</li>
+        <li><b>겉모습만 교체</b> 콜라이더 없는 자식 EnvVisual을 더하고 원래 렌더러만 끔<small>위치 · 콜라이더 · 게임 동작은 그대로</small></li>
+        <li><b>맞춤 검사</b> 모델 표면과 콜라이더를 레이로 비교<small>서는 윗면 오차 중앙값 -0.03 ~ +0.03 m</small></li>
+        <li>바닥 · 배경 절벽은 타일 텍스처로 메시를 만들어 회색 상자 0개</li>
+        <li>부착 가능 면은 연두베이지 패치로 그대로 보이게 둠</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pageno">6</div>
+</section>
+
+<!-- 7. Before / After -->
+<section class="slide dark">
+  <div class="bar"></div>
+  <div class="head" style="margin-bottom:36px;"><div class="kicker">05 · 아트 파이프라인</div><h2>Before / After</h2></div>
+  <div class="body" style="gap:48px;">
+    <div class="col">
+      <img class="shot" src="images/v2_00_Overview.png" style="height:330px;object-fit:cover;object-position:50% 70%;">
+      <div class="cap" style="margin-bottom:22px;">전: 그레이박스 레벨</div>
+      <img class="shot" src="images/env2_before_start.png" style="height:330px;">
+      <div class="cap">전: 시작 구역 (바닥은 회색 상자)</div>
+    </div>
+    <div style="font-size:80px;color:#e9b072;align-self:center;font-weight:800;">→</div>
+    <div class="col">
+      <img class="shot" src="images/env2_overview.png" style="height:330px;">
+      <div class="cap" style="margin-bottom:22px;">후: VARCO 환경 모델 적용 전체</div>
+      <img class="shot" src="images/env2_start_basin_final.png" style="height:330px;">
+      <div class="cap">후: 시작 구역 (풀 바닥 · 절벽 배경)</div>
+    </div>
+  </div>
+  <div class="pageno">7</div>
+</section>
+
+<!-- 8. 캐릭터 · 애니메이션 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">06 · 캐릭터 · 애니메이션</div><h2>탐험가 다람쥐, Mixamo로 움직이다</h2></div>
+  <div class="body">
+    <div style="flex:0 0 560px;">
+      <img class="shot" src="images/squirrel_mixamo_mountain_front.png" style="height:640px;object-view-box:inset(8% 8% 6% 8%);">
+      <div class="cap">VARCO 다람쥐 + Mixamo 리그 (키 1.2 m)</div>
+    </div>
+    <div class="col">
+      <ul class="b tight">
+        <li>Blender로 17%까지 줄임 (약 4.2만 삼각형) → Mixamo 자동 리깅 → Blender에서 스킨 고침<small>꼬리는 Hips에 고정, 볼 · 턱은 Head로</small></li>
+        <li><b>클립</b> 대기 · 걷기 · 달리기 · 점프 공중 · 낙하<small>속도 블렌드, 점프 자세는 위쪽 속도에 맞춰 진행</small></li>
+        <li><b>방향 전환</b> 좌우로 몸을 돌림 · <b>기절</b> 노란 별 + 어둡게</li>
+      </ul>
+      <img class="shot" src="images/animcheck_misc_left_stun_recovered_fall_landed.png" style="height:190px;margin-top:12px;object-fit:contain;background:#4b5563;">
+      <div class="cap">자동 확인(AnimCheck): 왼쪽 보기 · 기절 · 회복 · 낙하 · 착지</div>
+      <img class="shot" src="images/animcheck_jump.png" style="height:190px;margin-top:22px;object-fit:contain;background:#4b5563;object-view-box:inset(0% 0% 50% 0%);">
+      <div class="cap">점프: 도약 → 공중 자세</div>
+    </div>
+  </div>
+  <div class="pageno">8</div>
+</section>
+
+<!-- 9. 사운드 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">07 · 사운드</div><h2>VARCO Sound로 만든 BGM · 효과음</h2></div>
+  <div class="body">
+    <div class="col" style="flex:1.1;">
+      <table class="t big">
+        <tr><th>게임 이벤트</th><th>소리</th></tr>
+        <tr><td>뚫어뻥 발사 / 부착 / 해제</td><td class="m">휙 · 착! · 뽁!</td></tr>
+        <tr><td>점프 · 착지</td><td class="m">착지는 떨어진 속도만큼 크게</td></tr>
+        <tr><td>벽 충돌 → 기절</td><td class="m">충돌음 1번 + 기절 반복음</td></tr>
+        <tr><td>UI 버튼</td><td class="m">클릭음 (일시정지 중에도)</td></tr>
+        <tr><td>타이틀 · 등반 BGM</td><td class="m">각 2곡 무작위, 1.5초 크로스페이드</td></tr>
+        <tr><td>골인</td><td class="m">BGM 내리고 클리어 징글</td></tr>
+      </table>
+    </div>
+    <div class="col" style="flex:0.9;">
+      <ul class="b tight">
+        <li>효과음 · 징글 · UI는 앞뒤 빈 곳을 잘라낸 <b>_cut</b> 판을 사용</li>
+        <li>이벤트마다 <b>변형 3개</b> 중 무작위 (바로 전과 다른 것), 피치 ±5%</li>
+        <li>게임 코드에는 이벤트만 더하고, 소리는 GameAudio 한 곳에서</li>
+        <li>볼륨 · 배율은 설정 에셋 하나로 조절</li>
+      </ul>
+      <div class="stats" style="grid-template-columns:1fr 1fr 1fr;margin-top:10px;">
+        <div class="stat"><div class="n">4</div><div class="l">BGM</div></div>
+        <div class="stat"><div class="n">24</div><div class="l">효과음 · UI</div></div>
+        <div class="stat"><div class="n">3</div><div class="l">클리어 징글</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="pageno">9</div>
+</section>
+
+<!-- 10. UI / 게임 흐름 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head" style="margin-bottom:40px;"><div class="kicker">08 · UI / 게임 흐름</div><h2>타이틀 → 등반 → 일시정지 → 클리어</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:30px 48px;">
+    <div><img class="shot" src="images/01_title.png" style="height:330px;"><div class="cap"><b>타이틀</b> 최고 기록 · 시작 · 종료 · 조작 안내</div></div>
+    <div><img class="shot" src="images/02_start.png" style="height:330px;"><div class="cap"><b>등반</b> 왼쪽 위 타이머 HUD — 떨어져도 멈추지 않음</div></div>
+    <div><img class="shot" src="images/pause_menu_mountain.png" style="height:330px;"><div class="cap"><b>Esc 일시정지</b> 돌아가기 · 게임 종료, BGM은 50%로 계속</div></div>
+    <div><img class="shot" src="images/07_clear.png" style="height:330px;"><div class="cap"><b>클리어</b> 이번 기록 · 최고 기록 · 새 기록! · 다시 하기</div></div>
+  </div>
+  <div class="pageno">10</div>
+</section>
+
+<!-- 11. 개발 도구 -->
+<section class="slide dark">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">09 · 개발 도구</div><h2>Claude와 함께 만든 개발 도구</h2></div>
+  <div class="body">
+    <div class="col" style="flex:1.1;">
+      <ul class="b tight">
+        <li><b>Claude Hand / Unity MCP</b> Claude가 Unity 에디터를 직접 보고 고치고 Play로 확인</li>
+        <li><b>디버그 순간이동 창</b> Pop/Debug/Teleport — 구간 · 발판 · 앵커로 바로 이동, 얼리기</li>
+        <li><b>RouteBot</b> 경로 데이터대로 앵커를 쏘며 자동 등반</li>
+        <li><b>DropTester</b> 여러 지점에서 떨어뜨려 착지 위치 확인</li>
+        <li><b>Env Visuals 적용기</b> 겉모습 교체 · 맞춤 검사 · 회색 상자 찾기 (다시 실행해도 같은 결과)</li>
+        <li><b>AnimCheck</b> 애니메이션 상태별 자동 캡처</li>
+      </ul>
+    </div>
+    <div class="col" style="flex:0.9;">
+      <img class="shot" src="images/env_play_bot_t8.png" style="height:560px;object-view-box:inset(12% 0% 6% 0%);">
+      <div class="cap">RouteBot 등반 중 Game 뷰 (통나무 발판)</div>
+    </div>
+  </div>
+  <div class="pageno">11</div>
+</section>
+
+<!-- 12. 개발 과정 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head" style="margin-bottom:40px;"><div class="kicker">10 · 개발 과정</div><h2>11월 12일 시작, 4번의 작업일</h2></div>
+  <div style="position:relative;flex:1;">
+    <div style="position:absolute;left:0;right:0;top:46px;height:8px;background:var(--cream-2);border-radius:4px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:32px;position:relative;">
+      <div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--acorn);margin:32px 0 24px;"></div>
+        <div style="font-size:40px;font-weight:800;">11.12</div>
+        <ul class="b tight" style="margin-top:16px;"><li>Unity 프로젝트 시작</li><li>이동 · 점프 · 카메라<small>사용자 "딱 좋다"</small></li><li>뚫어뻥 발사 · 부착 · 흔들기 · 해제</li></ul>
+      </div>
+      <div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--acorn);margin:32px 0 24px;"></div>
+        <div style="font-size:40px;font-weight:800;">11.13</div>
+        <ul class="b tight" style="margin-top:16px;"><li>접촉 해제 · 기절 · 낙사</li><li>발사 연출</li><li>기획서 핵심 항목 완료</li></ul>
+      </div>
+      <div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--acorn);margin:32px 0 24px;"></div>
+        <div style="font-size:40px;font-weight:800;">11.20</div>
+        <ul class="b tight" style="margin-top:16px;"><li>Mountain 탑 맵 (리스폰 없는 추락)</li><li>VARCO 다람쥐 · 도토리 나무</li><li>공중 충돌 기절 · 순간이동 창</li><li>사거리 · 흔들기 힘 조정</li></ul>
+      </div>
+      <div>
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--forest);margin:32px 0 24px;"></div>
+        <div style="font-size:40px;font-weight:800;">11.23</div>
+        <ul class="b tight" style="margin-top:16px;"><li>타이틀 · 골인 · 기록</li><li>Mixamo 애니메이션</li><li>VARCO 환경 · 사운드</li><li>Esc 일시정지 · Windows 빌드</li></ul>
+      </div>
+    </div>
+    <div style="position:absolute;left:0;right:0;bottom:30px;">
+      <div style="font-size:26px;font-weight:700;color:var(--brown-soft);margin-bottom:14px;">기획서(Notion) 개발 우선순위 진행</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+        <div class="card"><div class="ct" style="color:#b3352a;">핵심 — 완료</div><div class="cd">이동 · 점프 · 카메라 · 뚫어뻥 · 기절 · 낙사 (11.13)</div></div>
+        <div class="card"><div class="ct" style="color:#b88a12;">완성 — 일부</div><div class="cd">골인 · 시작 화면 · 타이머 · 클리어 화면 완료 / 체크포인트 · 높이 표시 남음</div></div>
+        <div class="card"><div class="ct" style="color:#4f7a26;">여유 — 일부</div><div class="cd">사운드 · 최고 기록 · 기본 애니메이션 완료 / 이펙트 · 카메라 연출 남음</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="pageno">12</div>
+</section>
+
+<!-- 13. 결과 · 배포 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">11 · 결과 · 배포</div><h2>itch.io 페이지와 Windows 빌드</h2></div>
+  <div class="body">
+    <div style="flex:0 0 630px;">
+      <img class="shot" src="images/cover_630x500.png" style="width:630px;height:500px;">
+      <div class="cap">itch.io 표지 (630 × 500)</div>
+    </div>
+    <div class="col">
+      <ul class="b tight">
+        <li><b>itch.io</b> namuletta.itch.io/pop<small>지금은 초안(Draft) — 공개 전</small></li>
+        <li><b>Windows 빌드 업로드</b> Pop_Windows.zip 136 MB<small>Windows 실행 파일로 표시</small></li>
+        <li><b>스크린샷 6장</b> 정상 · 스윙 · 시작 · 고지 · 클리어 · 타이틀<small>+ 표지 · 배너</small></li>
+        <li><b>장르</b> Platformer · 태그 8개</li>
+        <li><b>AI 사용 표시</b> 그래픽 · 오디오 · 코드</li>
+      </ul>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:10px;">
+        <img class="shot" src="images/02_start.png" style="height:190px;object-view-box:inset(11% 0% 0% 0%);">
+        <img class="shot" src="images/03_swing.png" style="height:190px;object-view-box:inset(11% 0% 0% 0%);">
+        <img class="shot" src="images/04_high.png" style="height:190px;object-view-box:inset(11% 0% 0% 0%);">
+        <img class="shot" src="images/05_summit.png" style="height:190px;object-view-box:inset(11% 0% 0% 0%);">
+      </div>
+    </div>
+  </div>
+  <div class="pageno">13</div>
+</section>
+
+<!-- 14. 앞으로 할 것 -->
+<section class="slide">
+  <div class="bar"></div>
+  <div class="head"><div class="kicker">12 · 앞으로 할 것</div><h2>다음 단계</h2></div>
+  <div class="cards lg">
+    <div class="card"><div class="ct">사람 손 플레이 확인</div><div class="cd">실제 마우스 · 키 입력, 흔들기 감각, 고지 앵커를 붙일 시간 (약 0.4초) 여유</div></div>
+    <div class="card"><div class="ct">구간 다양화</div><div class="cd">지금은 "앵커 몇 개 → 쉬는 발판" 반복 → 굴뚝 · 천장 · 큰 진자 · 공중 재부착 · 미끄럼 경사</div></div>
+    <div class="card"><div class="ct">경로 데이터 맞추기</div><div class="cd">손으로 고친 레벨에 맞춰 RouteBot 완주 다시 검증</div></div>
+    <div class="card"><div class="ct">애니메이션</div><div class="cd">매달리기 · 기절 · 착지 동작, 꼬리 흔들림, 발 미끄러짐 줄이기</div></div>
+    <div class="card"><div class="ct">사운드</div><div class="cd">실제 플레이로 볼륨 균형, 줄 흔들림 소리 · 환경음</div></div>
+    <div class="card"><div class="ct">UI · 아트 · 배포</div><div class="cd">높이 표시 · 조준 커서 정리, 텍스처 반복 줄무늬, itch.io 페이지 공개</div></div>
+  </div>
+  <div class="pageno">14</div>
+</section>
+
+<!-- 15. 감사합니다 -->
+<section class="slide" style="padding:0;">
+  <img src="images/04_high.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-view-box:inset(11% 0% 0% 0%);">
+  <div style="position:absolute;inset:0;background:rgba(46,59,34,.82);"></div>
+  <div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--cream);text-align:center;">
+    <div style="font-size:150px;font-weight:900;color:#ffd24a;text-shadow:0 6px 0 #7a3f12;">감사합니다</div>
+    <div style="font-size:56px;font-weight:700;margin-top:30px;">Q &amp; A</div>
+    <div style="font-size:30px;margin-top:70px;color:#d9d0b8;">POP — 다람쥐, 뚫어뻥 하나로 도토리 나무까지<br>itch.io namuletta · GitHub Shaun1667</div>
+  </div>
+</section>
+
+</body>
+</html>

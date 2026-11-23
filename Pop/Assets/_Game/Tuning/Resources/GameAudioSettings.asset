@@ -75,6 +75,8 @@ MonoBehaviour:
   bgmCrossfadeTime: 1.5
   goalBgmVolumeMultiplier: 0
   goalBgmFadeTime: 0.5
+  pauseBgmVolumeMultiplier: 0.5
+  pauseBgmFadeTime: 0.2
   stunLoopFadeOut: 0.15
   landMinImpactSpeed: 2.8
   landFullImpactSpeed: 9

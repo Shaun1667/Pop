@@ -191,6 +191,8 @@ namespace Pop.Player
         void Update()
         {
             if (tuning == null) return;
+            // 일시정지 중(GameInput.GameplayBlocked): 입력을 읽지 않고 지금 값을 그대로 둔다(계속할 때 이동 입력이 한 스텝 끊기지 않게). 물리는 timeScale 0이라 멈춰 있다.
+            if (GameInput.GameplayBlocked) return;
 
             // 기절 / 낙사 중: 이동·점프 입력 무시. 버퍼도 비워서 착지 순간 점프가 튀어나오지 않게.
             if (_state == PlayerState.Stunned || _state == PlayerState.Dead || _controlLocked)

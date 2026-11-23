@@ -43,6 +43,12 @@ namespace Pop.Plunger
         [Tooltip("Play 중 시스템 커서 숨김 (꺼지면 다시 보임)")]
         public bool hideSystemCursor = true;
 
+        [Header("줄 시작점 (보이는 것만, 줄 물리 · 조준 레이와 무관)")]
+        [Tooltip("보이는 줄과 발사된 머리가 몸(Animator의 Chest 뼈 → Spine → Hips)에서 나오게 한다. 끄면 플레이어 중심")]
+        public bool ropeFromChest = true;
+        [Tooltip("가슴 뼈에서 모델 정면 쪽으로 더 내미는 거리 (m)")]
+        public float ropeChestForward = 0.06f;
+
         [Header("발사 연출 (보이는 것만, 판정·물리와 무관)")]
         [Tooltip("뚫어뻥 머리가 날아가는 속도 (m/s)")]
         public float shotSpeed = 45f;
@@ -91,6 +97,8 @@ PlayerController _player;
         RaycastHit _aimHit;
 
         LineRenderer _line;
+        Animator _ropeAnimator;
+        Transform _ropeAnchor;
         GameObject _head;
         Texture2D _ringTex;
 
@@ -118,6 +126,7 @@ PlayerController _player;
             _rb = GetComponent<Rigidbody>();
             _ownColliders = GetComponentsInChildren<Collider>(true);
             BuildVisuals();
+            ResolveRopeAnchor();
             _ringTex = MakeRingTexture(64, 0.38f, 0.5f);
         }
 
@@ -144,6 +153,8 @@ void Update()
         {
             var tuning = Tuning;
             if (tuning == null) return;
+            // 일시정지 중: 조준 · 발사 안 함(버튼 클릭이 뚫어뻥을 쏘지 않게). 커서는 PauseMenu가 보이고 되돌린다.
+            if (GameInput.GameplayBlocked) return;
 
             float dt = Time.deltaTime;
             if (_cooldown > 0f) _cooldown -= dt;
@@ -300,7 +311,7 @@ void LateUpdate()
             _head.transform.SetPositionAndRotation(headPos, headRot);
             if (!_head.activeSelf) _head.SetActive(true);
             _line.positionCount = 2;
-            _line.SetPosition(0, transform.position);
+            _line.SetPosition(0, RopeStart());
             _line.SetPosition(1, headPos);
             _line.enabled = true;
         }
@@ -314,7 +325,7 @@ void LateUpdate()
             if (tuning == null || !_aimDirValid) return;
 
             _shotForAttach = attach;
-            _shotOrigin = transform.position;
+            _shotOrigin = RopeStart();
             _shotOrigin.z = 0f;
             Vector3 end;
             if (attach)
@@ -401,7 +412,7 @@ void LateUpdate()
                 }
                 case ShotPhase.Retract:
                 {
-                    Vector3 target = transform.position;
+                    Vector3 target = RopeStart();
                     _shotPos = Vector3.MoveTowards(_shotPos, target, Mathf.Max(0.01f, retractSpeed) * dt);
                     Vector3 back = target - _shotPos;
                     if (back.sqrMagnitude < 0.3f * 0.3f) { ClearShot(); return false; }
@@ -422,10 +433,47 @@ void LateUpdate()
             }
         }
 
+        /// <summary>
+        /// 보이는 줄이 시작하는 점: 다람쥐 가슴 뼈(+ 정면 쪽 조금), Z는 플레이어 평면.
+        /// LateUpdate(애니메이션 뒤)에서 읽으므로 자세와 한 프레임 어긋나지 않는다. 뼈가 없으면 플레이어 중심.
+        /// 줄 물리(Rigidbody 기준)와 조준 레이 원점은 그대로다.
+        /// </summary>
+        public Vector3 RopeStart()
+        {
+            Vector3 p = transform.position;
+            if (!ropeFromChest) return p;
+            if (_ropeAnchor == null || _ropeAnimator == null || !_ropeAnimator.isActiveAndEnabled) ResolveRopeAnchor();
+            if (_ropeAnchor == null) return p;
+
+            Vector3 q = _ropeAnchor.position;
+            if (ropeChestForward != 0f)
+            {
+                Vector3 fwd = _ropeAnimator.transform.forward; // 모델 정면(+Z) = 바라보는 쪽
+                fwd.z = 0f;
+                if (fwd.sqrMagnitude > 1e-6f) q += fwd.normalized * ropeChestForward;
+            }
+            q.z = p.z; // 플레이 평면 위에
+            return q;
+        }
+
+        /// <summary>다람쥐 Animator에서 가슴 뼈를 찾는다 (Chest → Spine → Hips). 캐릭터를 바꿔도 씬 수정 없이 따라간다.</summary>
+        void ResolveRopeAnchor()
+        {
+            _ropeAnchor = null;
+            var anim = GetComponent<PlayerAnimationVisual>();
+            _ropeAnimator = anim != null && anim.animator != null ? anim.animator : GetComponentInChildren<Animator>();
+            if (_ropeAnimator == null || !_ropeAnimator.isHuman) return;
+            _ropeAnchor = _ropeAnimator.GetBoneTransform(HumanBodyBones.Chest);
+            if (_ropeAnchor == null) _ropeAnchor = _ropeAnimator.GetBoneTransform(HumanBodyBones.Spine);
+            if (_ropeAnchor == null) _ropeAnchor = _ropeAnimator.GetBoneTransform(HumanBodyBones.Hips);
+        }
+
+
         void OnGUI()
         {
             if (Event.current.type != EventType.Repaint || _ringTex == null || !GameInput.HasPointer) return;
             if (_player != null && _player.ControlLocked) return; // 클리어 화면에서는 조준 커서 안 그림
+            if (GameInput.GameplayBlocked) return; // 일시정지 화면에서도 안 그림
 
             Vector2 sp = GameInput.PointerScreenPosition;
             float x = sp.x;

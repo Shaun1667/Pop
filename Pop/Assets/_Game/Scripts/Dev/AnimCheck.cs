@@ -23,7 +23,7 @@ namespace Pop.Dev
         public string outDir;
         public int tile = 288;
 
-        const float TPoseHandSpan = 0.852f; // 모델 단위(스케일 1)에서 T자 자세의 양손 거리
+        public float TPoseHandSpan = 0.852f; // Run 전에 모델에 맞게 넣는다 (예전 다람쥐 0.852, 날다람쥐는 모델에서 잰 값). // 모델 단위(스케일 1)에서 T자 자세의 양손 거리
 
         PlayerController _player;
         PlayerAnimationVisual _pav;

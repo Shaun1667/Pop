@@ -103,16 +103,20 @@ namespace Pop.EditorTools
 
         void Freeze()
         {
-            if (!_frozen) _savedTimeScale = Time.timeScale > 0f ? Time.timeScale : 1f;
+            // Esc 일시정지 중이면 지금 timeScale(0)은 일시정지 것이다: 그 전 값을 기억한다
+            if (!_frozen) _savedTimeScale = Pop.Game.PauseMenu.IsPaused ? Pop.Game.PauseMenu.TimeScaleBeforePause : (Time.timeScale > 0f ? Time.timeScale : 1f);
             Time.timeScale = 0f;
             _frozen = true;
+            Pop.Game.PauseMenu.DebugFreeze = true;
         }
 
         void Unfreeze()
         {
             if (!_frozen) return;
-            if (EditorApplication.isPlaying) Time.timeScale = _savedTimeScale;
+            // Esc 일시정지 중이면 timeScale은 일시정지가 갖고 있다(계속할 때 그쪽이 되돌린다)
+            if (EditorApplication.isPlaying && !Pop.Game.PauseMenu.IsPaused) Time.timeScale = _savedTimeScale;
             _frozen = false;
+            Pop.Game.PauseMenu.DebugFreeze = false;
         }
 
         // ---------------- 목록 만들기 ----------------

@@ -55,6 +55,10 @@ namespace Pop.Audio
         [Range(0f, 1f)] public float goalBgmVolumeMultiplier = 0f;
         [Tooltip("골인 때 BGM 줄이는 시간 (s)")]
         public float goalBgmFadeTime = 0.5f;
+        [Tooltip("Esc 일시정지 중 BGM을 이 배율로 줄여 계속 튼다 (효과음 · 기절 반복음은 멈춤)")]
+        [Range(0f, 1f)] public float pauseBgmVolumeMultiplier = 0.5f;
+        [Tooltip("일시정지 들어갈 때 · 나올 때 BGM 볼륨 바꾸는 시간 (s, unscaled)")]
+        public float pauseBgmFadeTime = 0.2f;
 
         [Header("기절 반복음")]
         [Tooltip("기절이 풀릴 때 반복음 페이드 아웃 (s)")]

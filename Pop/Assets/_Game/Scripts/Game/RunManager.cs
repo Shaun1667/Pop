@@ -8,7 +8,7 @@ namespace Pop.Game
     /// <summary>
     /// 한 판(Mountain)의 타이머 · 골인 · 클리어 화면.
     /// 타이머는 씬이 시작될 때(Start) 돌기 시작해서 골인할 때까지 멈추지 않는다(떨어져도 리셋 · 일시정지 없음).
-    /// Time.deltaTime으로 세므로 Time.timeScale 0(디버그 순간이동 얼리기)일 때만 멈춘다.
+    /// Time.deltaTime으로 센다: Time.timeScale 0(디버그 순간이동 얼리기 · Esc 일시정지)이면 늘지 않는다. 일시정지(PauseMenu.IsPaused) 중에는 아예 세지 않는다.
     /// 골인(GoalTrigger) → 타이머 정지 · 플레이어 조작 잠금 · 기록 저장(PlayerPrefs, ClearRecord) · 클리어 화면.
     /// </summary>
     [DefaultExecutionOrder(-50)]
@@ -73,7 +73,7 @@ namespace Pop.Game
 
         void Update()
         {
-            if (_running) _elapsed += Time.deltaTime;
+            if (_running && !PauseMenu.IsPaused) _elapsed += Time.deltaTime;
             RefreshTimer();
         }
 

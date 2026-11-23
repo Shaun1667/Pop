@@ -27,8 +27,9 @@ namespace Pop.EditorTools
     ///   T*_Ledge_* 세로로 긴 상자(h/w > 2)   → 높이 20 m 이하 Env_TrunkPillar, 그 위 Env_RockPillar 3개 쌓기
     ///   Summit_Plateau, Ledge_Start         → Env_MesaPlateau
     ///   Wall_Left/Right                     → Env_CliffWall 세로 타일
-    ///   Floor_Basin                         → 같은 모양 메시(윗면 = 콜라이더 면 그대로): 윗면 · 가장자리 띠 풀(메사 풀),
-    ///                                          옆 · 앞은 바위(절벽 돌) — 월드 좌표 UV, Mirror 타일 텍스처
+    ///   Floor_Basin                         → Env_MesaPlateau 조각을 경사에 맞춰 돌려 잇고(윗줄), 그 아래를 수평 메사로 메움(아랫줄).
+    ///                                          Ledge_Start와 같은 겉모습. (BasinUsesMesa = false면 예전 방식: 같은 모양 메시, 윗면 · 가장자리 띠 풀,
+    ///                                          옆 · 앞은 바위(절벽 돌) — 월드 좌표 UV, Mirror 타일 텍스처)
     ///   Backdrop_Mountain/Backdrop_*        → 앞면만 있는 절벽 면(울퉁불퉁 z, 산 능선 윤곽), 어둡고 푸르스름한 절벽 돌
     ///   도토리 나무, 골인                   → 그대로
     ///   Pop/Dev/Env Visuals/Audit           — 아직 켜진 회색 상자 렌더러 목록
@@ -47,12 +48,12 @@ namespace Pop.EditorTools
         static readonly string[] Models = { Wedge, Log, Trunk, RockPillar, Mesa, Cliff };
 
         // 서 있는 윗면 높이 = 모델 바닥 + 높이 × 이 비율. 메시를 재서 정한 값(Setup Assets 로그 flatTop 참고).
-        //   통나무: 길게 깎은 평평한 윗면이 0.83~0.90(가운데 0.86), 한쪽 끝(+z) 가지 그루터기만 1.0까지 솟음
+        //   통나무: 윗면을 길이 방향으로 수평하게 고르고 +z 끝 그루터기를 깎아낸 모델(가운데 줄 0.933~0.941, 중앙값 0.938). 1.0은 윗면 한쪽 옆 가장자리 껍질 턱
         //   나무 기둥 · 메사: 윗면 0.99~1.0
         //   바위 기둥: 윗면이 울퉁불퉁(0.93~1.0)해서 가운데 · 맨 위 조각은 뒤집어 평평한 바닥을 윗면으로 쓴다 → 1.0
         static readonly Dictionary<string, float> FlatTopFrac = new Dictionary<string, float>
         {
-            { Log, 0.865f }, { Trunk, 0.995f }, { RockPillar, 1f }, { Mesa, 0.995f }, { Wedge, 1f }, { Cliff, 1f },
+            { Log, 0.938f }, { Trunk, 0.995f }, { RockPillar, 1f }, { Mesa, 0.995f }, { Wedge, 1f }, { Cliff, 1f },
         };
 
         // 서는 윗면의 가로(x) 폭 / 모델 전체 폭. 맞춤 검사에서 "안쪽으로 들어감"을 잴 때 쓴다.
@@ -252,7 +253,7 @@ namespace Pop.EditorTools
                     case "RockPillar": BuildRockPillar(container, j, prefabs[RockPillar]); break;
                     case "Mesa": BuildMesa(container, j, prefabs[Mesa]); break;
                     case "Cliff": BuildCliff(container, j, prefabs[Cliff]); break;
-                    case "Ground": BuildGround(container, j); break;
+                    case "Ground": if (BasinUsesMesa) BuildBasinMesa(container, j, prefabs[Mesa]); else BuildGround(container, j); break;
                     case "Backdrop": BuildBackdrop(container, j); break;
                 }
                 Finish(container.gameObject);
@@ -722,6 +723,83 @@ namespace Pop.EditorTools
                 + Mathf.PerlinNoise(x * 4.3f + 9.1f, y * 4.3f + 3.3f) * 0.1f;
         }
 
+        // ───────────────────────── Floor_Basin: 메사 타일 ─────────────────────────
+        // 시작 발판(Ledge_Start = Env_MesaPlateau)과 같은 겉모습으로 맞춘다.
+        //   윗줄: 메사 조각을 경사(윗면 꺾인선의 각 구간)에 맞춰 Z로 돌려 잇는다. 조각 크기는 Ledge_Start 메사와 비슷하게
+        //         (길이 ≈ 18.8 m, 높이 8 m) 해서 풀 턱 · 돌 블록 크기가 같다. 메사 양 끝 6.5%는 윗면이 둥글게 내려가므로
+        //         그만큼씩 겹쳐서 평평한 구간끼리만 이어지게 한다. 겹친 곳이 깜빡이지 않게 하나 걸러 깊이 · 높이를 조금 다르게.
+        //   아랫줄: 윗줄 바닥(경사와 나란함)과 분지 바닥(y = bottom) 사이를 메우는 수평 메사. 깊이를 줄여(0.80) 풀 턱이
+        //         윗줄 돌 면 뒤에 숨고, 윗면은 경사 윗면보다 1.2 m 아래라 윗줄 속에 들어간다.
+        const bool BasinUsesMesa = true;          // false면 예전처럼 만든 메시(GrassGround)
+        const float BasinTileLen = 18.8f;         // 조각 길이 목표(Ledge_Start 메사 길이)
+        const float BasinTileH = 8f;              // 서는 면에서 조각 바닥까지(Ledge_Start 높이)
+        const float MesaEndFrac = 0.065f;         // 메사 한쪽 끝에서 윗면이 내려가는 구간 / 전체 길이
+        const float BasinLowerDepthFrac = 0.80f;  // 아랫줄 깊이 비율(메사 몸통 / 풀 턱 폭 = 0.83보다 작게)
+        const float BasinLowerTopDrop = 1.2f;     // 아랫줄 윗면이 경사 윗면보다 내려가는 양
+
+        static void BuildBasinMesa(Transform c, Job j, GameObject prefab)
+        {
+            var t = j.target;
+            var src = t.GetComponent<MeshFilter>().sharedMesh;
+            var sv = src.vertices; var tri = src.triangles;
+            var w = new Vector3[sv.Length];
+            for (int i = 0; i < sv.Length; i++) w[i] = Rel(c, t.TransformPoint(sv[i]));
+            float zMin = w.Min(p => p.z), zMax = w.Max(p => p.z), bottom = w.Min(p => p.y);
+            var top = new List<Vector2>();
+            for (int i = 0; i < tri.Length; i += 3)
+            {
+                Vector3 a = w[tri[i]], b = w[tri[i + 1]], cc = w[tri[i + 2]];
+                if (Vector3.Cross(b - a, cc - a).normalized.y < 0.3f) continue;
+                foreach (var p in new[] { a, b, cc })
+                    if (!top.Any(q => Mathf.Abs(q.x - p.x) < 1e-3f)) top.Add(new Vector2(p.x, p.y));
+            }
+            top.Sort((p, q) => p.x.CompareTo(q.x));
+            if (top.Count < 2) { Debug.LogWarning("[EnvVisuals] 윗면을 못 찾음: " + t.name); return; }
+            System.Func<float, float> topY = x =>
+            {
+                if (x <= top[0].x) return top[0].y;
+                for (int s = 0; s < top.Count - 1; s++)
+                    if (x <= top[s + 1].x + 1e-4f) return Mathf.Lerp(top[s].y, top[s + 1].y, Mathf.InverseLerp(top[s].x, top[s + 1].x, x));
+                return top[top.Count - 1].y;
+            };
+            float zc = (zMin + zMax) * 0.5f, depth = zMax - zMin, frac = FlatTopFrac[Mesa];
+            float e = MesaEndFrac;
+
+            // 윗줄
+            int idx = 0;
+            for (int s = 0; s < top.Count - 1; s++)
+            {
+                Vector2 A = top[s], B = top[s + 1];
+                float len = Vector2.Distance(A, B);
+                if (len < 0.5f) continue;
+                float ang = Mathf.Atan2(B.y - A.y, B.x - A.x) * Mathf.Rad2Deg;
+                int n = Mathf.Max(1, Mathf.RoundToInt(len / (BasinTileLen * (1f - 2f * e))));
+                float L = len / (n * (1f - 2f * e)), ov = e * L;
+                for (int i = 0; i < n; i++, idx++)
+                {
+                    bool even = idx % 2 == 0;
+                    float mid = -ov + L * 0.5f + i * (L - 2f * ov);
+                    var size = new Vector3(L, BasinTileH / frac, depth * (even ? 0.985f : 1f));
+                    var tr = Place(c, prefab, Mesa, Quaternion.identity, size, new Vector3(A.x + mid, 0f, zc), A.y - (even ? 0f : 0.012f), true,
+                        "MesaSlope_" + idx.ToString("00"));
+                    tr.RotateAround(c.position + new Vector3(A.x, A.y, zc), Vector3.forward, ang);
+                }
+            }
+
+            // 아랫줄
+            float xa = top[0].x - 0.5f, xb = top[top.Count - 1].x + 0.8f, range = xb - xa;
+            int n2 = Mathf.Max(1, Mathf.RoundToInt(range / (BasinTileLen * (1f - 2f * e))));
+            float L2 = range / (n2 * (1f - 2f * e)), ov2 = e * L2;
+            for (int i = 0; i < n2; i++)
+            {
+                float left = xa - ov2 + i * (L2 - 2f * ov2);
+                float topAt = Mathf.Min(bottom + BasinTileH, topY(left) - BasinLowerTopDrop);
+                if (topAt - bottom < 1f) continue;
+                var size = new Vector3(L2, (topAt - bottom) / frac, depth * BasinLowerDepthFrac * (i % 2 == 0 ? 1f : 0.97f));
+                Place(c, prefab, Mesa, Quaternion.identity, size, new Vector3(left + L2 * 0.5f, 0f, zc), bottom, false, "MesaBase_" + i.ToString("00"));
+            }
+        }
+
         // Floor_Basin: z로 밀어 낸 모양(윗면 꺾인선 + 평평한 바닥). 같은 모양을 다시 만들어 윗면이 콜라이더와 정확히 같다.
         //   풀(submesh 0): 윗면 + 옆면 위쪽 띠(두께 0.16~0.40 m, 울퉁불퉁) / 바위(submesh 1): 나머지 옆면 · 바닥
         static void BuildGround(Transform c, Job j)
@@ -1001,7 +1079,8 @@ namespace Pop.EditorTools
                     if (standing) w[4] = Mathf.Max(w[4], Mathf.Max(insetL, insetR));
                     w[5] = Mathf.Max(w[5], sOut); w[6] = Mathf.Max(w[6], sIn);
 
-                    bool bad = (standing && (Mathf.Abs(med) > 0.05f || insetL > 0.15f || insetR > 0.15f)) || sOut > 0.15f;
+                    // Ground(분지)는 양 끝이 시작 발판 · 오른쪽 벽 속으로 들어가 있어 옆으로 나온 양은 참고만 한다.
+                    bool bad = (standing && (Mathf.Abs(med) > 0.05f || insetL > 0.15f || insetR > 0.15f)) || (sOut > 0.15f && j.kind != "Ground");
                     if (j.kind == "Cliff")
                         sb.AppendLine(string.Format("    {0}{1} [{2}] 안쪽 면 side out {3:0.00} in {4:0.00}", bad ? "!! " : "", PathOf(j.target), j.kind, sOut, sIn));
                     else

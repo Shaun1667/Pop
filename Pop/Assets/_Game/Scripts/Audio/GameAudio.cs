@@ -13,6 +13,8 @@ namespace Pop.Audio
     /// Play가 시작될 때(첫 씬을 불러오기 전) Resources/GameAudioSettings를 불러 스스로 만들고 DontDestroyOnLoad로 씬을 넘어 산다.
     /// 씬이 불릴 때마다 그 씬의 PlayerController · PlungerController · RunManager 이벤트를 듣고, 모든 uGUI Button의 onClick에 클릭음을 단다.
     /// 게임 코드는 이벤트만 내고 소리는 모른다. 이동 · 판정 · 튜닝은 건드리지 않는다.
+    /// Esc 일시정지(PauseMenu.PausedChanged): AudioListener.pause로 효과음 · 기절 반복음 · 징글을 멈추고, BGM은 pauseBgmVolumeMultiplier(0.5)로 줄여 계속 튼다.
+    /// UI 클릭음은 전용 AudioSource(ignoreListenerPause)라 일시정지 중에도 난다.
     /// 착지 세기는 FixedUpdate에서 PlayerController 다음에(실행 순서 100) 공중일 때 마지막 아래 속도를 기억해 바닥에 닿는 스텝에 쓴다.
     /// </summary>
     [DefaultExecutionOrder(100)]
@@ -45,6 +47,10 @@ namespace Pop.Audio
         Fader _stunFade;
         AudioSource _jingle;
         Fader _jingleFade;
+        AudioSource _ui;
+        bool _paused;
+        readonly float[] _bgmPauseTarget = new float[2];
+        readonly bool[] _bgmPauseStop = new bool[2];
         readonly List<Fader> _faders = new List<Fader>();
 
         readonly Dictionary<AudioClip[], int> _lastPick = new Dictionary<AudioClip[], int>();
@@ -89,11 +95,17 @@ namespace Pop.Audio
             Instance = this;
         }
 
-        void OnEnable() => SceneManager.sceneLoaded += OnSceneLoaded;
+        void OnEnable()
+        {
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            PauseMenu.PausedChanged += OnPausedChanged;
+        }
 
         void OnDisable()
         {
             SceneManager.sceneLoaded -= OnSceneLoaded;
+            PauseMenu.PausedChanged -= OnPausedChanged;
+            SetPaused(false);
             UnhookPlayer();
         }
 
@@ -111,12 +123,15 @@ namespace Pop.Audio
             for (int i = 0; i < 2; i++)
             {
                 _bgm[i] = MakeSource("BGM_" + i, true);
+                _bgm[i].ignoreListenerPause = true; // 일시정지 중에도 작게 계속
                 _bgmFade[i] = AddFader(_bgm[i]);
             }
             _stun = MakeSource("StunLoop", true);
             _stunFade = AddFader(_stun);
             _jingle = MakeSource("Jingle", false);
             _jingleFade = AddFader(_jingle);
+            _ui = MakeSource("UI", false);
+            _ui.ignoreListenerPause = true; // 일시정지 화면 버튼 클릭음
         }
 
         void Start()
@@ -206,6 +221,7 @@ namespace Pop.Audio
         {
             if (scene.handle == _handledSceneHandle) return;
             _handledSceneHandle = scene.handle;
+            SetPaused(false);
 
             StopStunLoop(true);
             if (_jingle.isPlaying) SetFade(_jingleFade, 0f, 0.3f, true);
@@ -287,6 +303,14 @@ namespace Pop.Audio
             _run = null;
         }
 
+        /// <summary>버튼 하나에 클릭음을 단다(이미 달렸으면 건너뜀). 씬을 불러온 뒤에 생긴 버튼용.</summary>
+        public void HookButton(Button b)
+        {
+            if (b == null || _hookedButtons.Contains(b)) return;
+            b.onClick.AddListener(PlayUIClick);
+            _hookedButtons.Add(b);
+        }
+
         void HookButtons(Scene scene)
         {
             _hookedButtons.RemoveWhere(b => b == null);
@@ -359,7 +383,48 @@ namespace Pop.Audio
         }
 
         /// <summary>UI 버튼 클릭음. 씬의 모든 Button onClick에 자동으로 달린다.</summary>
-        public void PlayUIClick() => PlaySfx("UIClick", settings.uiClick, settings.uiVolume * settings.uiClickVolume);
+        public void PlayUIClick()
+        {
+            var clip = Pick(settings.uiClick);
+            if (clip == null || _ui == null) return;
+            float pv = settings.pitchVariation;
+            _ui.pitch = 1f + Random.Range(-pv, pv);
+            _ui.volume = 1f;
+            _ui.PlayOneShot(clip, Mathf.Clamp01(settings.uiVolume * settings.uiClickVolume));
+            Log("UIClick", clip);
+        }
+
+        // ---- 일시정지 ----
+
+        /// <summary>일시정지 중인가 (소리 쪽). 확인용</summary>
+        public bool Paused => _paused;
+
+        void OnPausedChanged(bool paused) => SetPaused(paused);
+
+        void SetPaused(bool paused)
+        {
+            if (paused == _paused) return;
+            _paused = paused;
+            AudioListener.pause = paused; // ignoreListenerPause가 아닌 소리(효과음 · 기절 반복 · 징글)는 멈췄다가 그 자리에서 이어진다
+            if (settings == null) return;
+            float t = Mathf.Max(0f, settings.pauseBgmFadeTime);
+            for (int i = 0; i < 2; i++)
+            {
+                var f = _bgmFade[i];
+                if (f == null || f.src == null) continue;
+                if (paused)
+                {
+                    _bgmPauseTarget[i] = f.target;
+                    _bgmPauseStop[i] = f.stopAtZero;
+                    SetFade(f, f.target * settings.pauseBgmVolumeMultiplier, t, f.stopAtZero);
+                }
+                else
+                {
+                    SetFade(f, _bgmPauseTarget[i], t, _bgmPauseStop[i]);
+                }
+            }
+            if (settings.debugLog) Debug.Log("[GameAudio] Pause " + (paused ? "on" : "off"));
+        }
 
         // ---- 재생 ----
 

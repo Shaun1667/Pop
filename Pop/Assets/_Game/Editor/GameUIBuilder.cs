@@ -14,6 +14,7 @@ namespace Pop.EditorTools
     /// 시작 화면(Title.unity)과 Mountain의 HUD · 클리어 화면 · 골인 트리거를 만든다.
     /// - Pop/Dev/Build Title Scene: Title.unity를 새로 만들고 Build Settings 0번에 둔다.
     /// - Pop/Dev/Add Mountain Game UI: 열린 Mountain 씬에 GameUI · EventSystem · 골인 트리거를 더한다(이미 있으면 건너뜀).
+    /// - Pop/Dev/Add Pause Menu: 열린 씬의 GameUI(RunManager)에 Esc 일시정지 화면(PausePanel) + PauseMenu를 더한다(이미 있으면 건너뜀). Add Mountain Game UI도 부른다.
     ///   레벨 오브젝트는 옮기거나 지우지 않는다. 골인 트리거만 AcornTree_Goal 아래에 새로 붙인다.
     /// </summary>
     public static class GameUIBuilder
@@ -122,6 +123,7 @@ namespace Pop.EditorTools
                 log.AppendLine("GameUI added");
             }
             else log.AppendLine("GameUI already there");
+            log.AppendLine(EnsurePauseMenuInScene());
 
             log.AppendLine(EnsureGoalTriggerInScene());
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
@@ -179,6 +181,59 @@ namespace Pop.EditorTools
             run.retryButton = retry;
             run.titleButton = toTitle;
             dim.gameObject.SetActive(false);
+        }
+
+        // ------------------------------------------------------------ 일시정지 (Esc)
+
+        [MenuItem("Pop/Dev/Add Pause Menu")]
+        public static void AddPauseMenuMenu()
+        {
+            Debug.Log(EnsurePauseMenuInScene());
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        }
+
+        /// <summary>열린 씬의 RunManager(GameUI)에 PausePanel + PauseMenu를 더한다. 이미 PauseMenu가 있으면 건너뛴다. GameUI 밖은 안 건드린다.</summary>
+        public static string EnsurePauseMenuInScene()
+        {
+            var run = Object.FindFirstObjectByType<RunManager>(FindObjectsInactive.Include);
+            if (run == null) return "PauseMenu: no RunManager (GameUI) in this scene";
+            var existing = run.GetComponent<PauseMenu>();
+            if (existing != null) return "PauseMenu already there";
+            BuildPauseUI(run);
+            return "PauseMenu added to " + run.gameObject.name;
+        }
+
+        static void BuildPauseUI(RunManager run)
+        {
+            var root = (RectTransform)run.transform;
+            var pause = Undo.AddComponent<PauseMenu>(run.gameObject);
+
+            // 어두운 배경 전체 (클리어 화면과 같은 방식). 맨 위(마지막 자식)로 둔다
+            var dim = MakeImage("PausePanel", root, new Color(0f, 0f, 0f, 0.6f));
+            Undo.RegisterCreatedObjectUndo(dim.gameObject, "Add PausePanel");
+            Stretch(dim, Vector2.zero, Vector2.one);
+            dim.raycastTarget = true; // 뒤를 누르지 못하게
+            dim.transform.SetAsLastSibling();
+            var box = MakeImage("Box", dim.rectTransform, PanelColor);
+            Place(box.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(600, 440));
+            var br = box.rectTransform;
+
+            var head = MakeText("Title", br, "일시정지", 84, AccentColor, FontStyle.Bold);
+            PlaceIn(head.rectTransform, 0.78f, new Vector2(560, 120));
+
+            var resume = MakeButton("ResumeButton", br, "돌아가기", ButtonColor, new Color(0.18f, 0.10f, 0.03f));
+            PlaceIn((RectTransform)resume.transform, 0.45f, new Vector2(340, 84));
+            var quit = MakeButton("QuitButton", br, "게임 종료", Button2Color, TextColor);
+            PlaceIn((RectTransform)quit.transform, 0.20f, new Vector2(340, 72));
+
+            var hint = MakeText("Hint", br, "Esc 계속하기", 24, new Color(0.85f, 0.88f, 0.82f, 0.7f), FontStyle.Normal);
+            PlaceIn(hint.rectTransform, 0.05f, new Vector2(400, 34));
+
+            pause.pausePanel = dim.gameObject;
+            pause.resumeButton = resume;
+            pause.quitButton = quit;
+            dim.gameObject.SetActive(false);
+            EditorUtility.SetDirty(pause);
         }
 
         // ------------------------------------------------------------ 골인 트리거

@@ -6,17 +6,24 @@ namespace Pop.Input
     /// <summary>
     /// 키보드·마우스 입력을 읽는 유일한 곳. 다른 스크립트는 여기 값만 본다.
     /// 마우스 왼쪽 클릭 = 뚫어뻥 발사/해제, 마우스 위치 = 조준 커서.
-    /// A/D = 좌우 이동, Space = 점프, W/S = 시점 위/아래(캐릭터 조작과 무관).
+    /// A/D = 좌우 이동, Space = 점프, W/S = 시점 위/아래(캐릭터 조작과 무관), Esc = 일시정지.
+    /// GameplayBlocked(일시정지 중)이면 게임 조작 값(MoveX · Jump · Fire · LookY)은 전부 0/false. PausePressed와 포인터 위치는 그대로.
     /// </summary>
     public static class GameInput
     {
+        /// <summary>일시정지 등으로 게임 조작을 막는가 (PauseMenu가 켜고 끈다)</summary>
+        public static bool GameplayBlocked { get; set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => GameplayBlocked = false;
+
         /// <summary>A/D: -1 ~ 1</summary>
         public static float MoveX
         {
             get
             {
                 var kb = Keyboard.current;
-                if (kb == null) return 0f;
+                if (kb == null || GameplayBlocked) return 0f;
                 float x = 0f;
                 if (kb.aKey.isPressed) x -= 1f;
                 if (kb.dKey.isPressed) x += 1f;
@@ -30,7 +37,7 @@ namespace Pop.Input
             get
             {
                 var kb = Keyboard.current;
-                return kb != null && kb.spaceKey.wasPressedThisFrame;
+                return kb != null && !GameplayBlocked && kb.spaceKey.wasPressedThisFrame;
             }
         }
 
@@ -40,7 +47,7 @@ namespace Pop.Input
             get
             {
                 var kb = Keyboard.current;
-                return kb != null && kb.spaceKey.isPressed;
+                return kb != null && !GameplayBlocked && kb.spaceKey.isPressed;
             }
         }
 
@@ -50,7 +57,17 @@ namespace Pop.Input
             get
             {
                 var m = Mouse.current;
-                return m != null && m.leftButton.wasPressedThisFrame;
+                return m != null && !GameplayBlocked && m.leftButton.wasPressedThisFrame;
+            }
+        }
+
+        /// <summary>이번 프레임에 Esc를 눌렀는가 (일시정지 열기 / 닫기). 입력 액션 에셋의 Player/Pause와 같은 키.</summary>
+        public static bool PausePressed
+        {
+            get
+            {
+                var kb = Keyboard.current;
+                return kb != null && kb.escapeKey.wasPressedThisFrame;
             }
         }
 
@@ -67,14 +84,13 @@ namespace Pop.Input
             }
         }
 
-        
-/// <summary>W/S: 시점 위(+1)/아래(-1)</summary>
+        /// <summary>W/S: 시점 위(+1)/아래(-1)</summary>
         public static float LookY
         {
             get
             {
                 var kb = Keyboard.current;
-                if (kb == null) return 0f;
+                if (kb == null || GameplayBlocked) return 0f;
                 float y = 0f;
                 if (kb.wKey.isPressed) y += 1f;
                 if (kb.sKey.isPressed) y -= 1f;
