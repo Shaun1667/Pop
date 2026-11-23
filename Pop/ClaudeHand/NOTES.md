@@ -12,3 +12,4 @@
 - 2026-11-12 뚫어뻥 1차 완료. 부착 가능 면 = PlungerAttachable + M_Attachable(밝은 연두베이지), 불가 면 = 회색 M_Level. 줄 물리(늘어나지 않는 로프, 속도 기반 거리 제약)는 PlayerController, 조준·발사·표시는 PlungerController. 다음: 부착 중 다른 면 접촉 시 해제·기절(Stunned), 낙사, 체크포인트.
 - 2026-11-13 접촉 해제·기절·낙사 1차 완료. 부착 중 다른 콜라이더 접촉 → 바닥이면 해제만, 벽·천장이면 Stunned(착지해야만 풀림). 낙사는 KillZone 트리거 또는 PlayerTuning.killY(-10) → 즉시 리스폰. 리스폰 지점은 PlayerController.SetRespawnPoint(Vector3)로 바꾼다(체크포인트가 이걸 부른다). 기절 시험 구역은 Ground_East(x 33~50)와 x 30~33 구덩이. 다음: 체크포인트 · 골인 · 기본 UI(🟡).
 - 결정 (2026-11-13, 사용자): 부착 중 벽·천장에 닿으면 **부착한 그 면이어도 무조건 기절**. "기획서가 잘못된 것" — 기획서 4장 표 첫 줄(붙은 면 접촉은 기절 아님)은 따르지 않는다. 바닥 접촉 → 해제만은 그대로.
+- 2026-11-23 다람쥐 = Mixamo 리그(`Art/Characters/Squirrel/Mixamo/`), Animator는 `PlayerAnimationVisual`이 PlayerController 상태 · 속도만 읽어 움직인다(Root Motion 없음). 점프 공중 자세는 위쪽 속도로 진행시킨다. Mixamo에 올릴 때는 리그 없는 OBJ를 cm 크기(100배)로, 받은 뒤 꼬리 · 볼 스킨은 Blender에서 고쳐야 한다(꼬리 → Hips).

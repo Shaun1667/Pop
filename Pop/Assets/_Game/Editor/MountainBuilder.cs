@@ -380,6 +380,8 @@ namespace Pop.EditorTools
             Prim(PrimitiveType.Sphere, "Acorn_2", tree, new Vector3(tx + 1.6f, top + 4.6f, -0.8f), new Vector3(0.7f, 0.85f, 0.7f), mAcorn, false);
             Prim(PrimitiveType.Sphere, "Acorn_3", tree, new Vector3(tx + 0.2f, top + 4.0f, -1.2f), new Vector3(0.7f, 0.85f, 0.7f), mAcorn, false);
             }
+            // 골인 트리거 (정상 발판 윗면 바로 위 얇은 층, 나무 왼쪽 7 m ~ 발판 오른쪽 끝). GameUIBuilder와 같은 규칙.
+            GameUIBuilder.CreateGoalTrigger(tree, new Bounds(new Vector3((x0 + x1) * 0.5f, top - 5f, 0f), new Vector3(x1 - x0, 10f, 4f)), register: false);
             log.AppendLine($"Summit plateau top y={top:F1}, x {x0:F1}..{x1:F1}, tree at x={tx:F1}");
         }
 

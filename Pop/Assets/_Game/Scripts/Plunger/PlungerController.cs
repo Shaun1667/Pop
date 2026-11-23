@@ -151,6 +151,9 @@ void Update()
             var st = _player.State;
             if (st == PlayerState.Stunned || st == PlayerState.Dead) return;
 
+            // 조작 잠금(골인 뒤 클리어 화면): 발사 안 함, 시스템 커서를 보여 UI 버튼을 누를 수 있게
+            if (_player.ControlLocked) { Cursor.visible = true; return; }
+
             if (!GameInput.FirePressed) return;
 
             if (_player.State == PlayerState.Attached)
@@ -416,6 +419,7 @@ void LateUpdate()
         void OnGUI()
         {
             if (Event.current.type != EventType.Repaint || _ringTex == null || !GameInput.HasPointer) return;
+            if (_player != null && _player.ControlLocked) return; // 클리어 화면에서는 조준 커서 안 그림
 
             Vector2 sp = GameInput.PointerScreenPosition;
             float x = sp.x;

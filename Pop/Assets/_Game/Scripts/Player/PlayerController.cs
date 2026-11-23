@@ -191,7 +191,7 @@ namespace Pop.Player
             if (tuning == null) return;
 
             // 기절 / 낙사 중: 이동·점프 입력 무시. 버퍼도 비워서 착지 순간 점프가 튀어나오지 않게.
-            if (_state == PlayerState.Stunned || _state == PlayerState.Dead)
+            if (_state == PlayerState.Stunned || _state == PlayerState.Dead || _controlLocked)
             {
                 _moveInput = 0f;
                 _jumpBufferTimer = 0f;
@@ -508,6 +508,24 @@ namespace Pop.Player
             _stuckTimer = 0f;
             SetState(PlayerState.Stunned);
             AirStunned?.Invoke();
+        }
+
+        // ---- 조작 잠금 (골인 등) ----
+        bool _controlLocked;
+        /// <summary>조작 잠금 중인가 (골인 뒤). 이동·점프·발사 입력을 무시한다. 물리·이동 규칙은 그대로.</summary>
+        public bool ControlLocked => _controlLocked;
+
+        /// <summary>
+        /// 조작 잠금 (골인한 RunManager가 부른다). 잠그면 A/D·Space·클릭 입력을 받지 않고, 매달려 있으면 놓는다.
+        /// 이동 수치·물리는 건드리지 않는다. 풀면 다시 입력을 받는다.
+        /// </summary>
+        public void SetControlLocked(bool locked)
+        {
+            _controlLocked = locked;
+            if (!locked) return;
+            _moveInput = 0f;
+            _jumpBufferTimer = 0f;
+            RequestRelease(withJump: false);
         }
 
         /// <summary>리스폰 지점을 바꾼다 (체크포인트가 부른다). z는 0으로 맞춘다.</summary>
