@@ -41,6 +41,8 @@ namespace Pop.Game
         public bool Cleared => _cleared;
         /// <summary>이번 판이 최고 기록이었는가 (골인 뒤)</summary>
         public bool LastWasNewRecord { get; private set; }
+        /// <summary>골인했을 때 (Clear 끝, 한 판에 한 번). 소리 등 표시용.</summary>
+        public event System.Action RunCleared;
 
         void OnEnable()
         {
@@ -96,6 +98,7 @@ namespace Pop.Game
             if (newRecordLabel != null) newRecordLabel.SetActive(LastWasNewRecord);
             if (hudBestText != null) hudBestText.text = "최고 " + ClearRecord.BestText;
             if (clearPanel != null) clearPanel.SetActive(true);
+            RunCleared?.Invoke();
 
             Cursor.visible = true;
             Cursor.lockState = CursorLockMode.None;

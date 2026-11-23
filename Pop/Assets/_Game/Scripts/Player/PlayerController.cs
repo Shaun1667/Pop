@@ -150,6 +150,8 @@ namespace Pop.Player
         public event Action Died;
         /// <summary>리스폰 지점으로 옮겨졌을 때 (위치). 카메라가 이걸 듣고 바로 따라간다.</summary>
         public event Action<Vector3> Respawned;
+        /// <summary>바닥에서 점프했을 때 (일반 점프만. 부착 중 Space 해제는 Released(true)). 소리 등 표시용.</summary>
+        public event Action Jumped;
 
 
         void Awake()
@@ -350,6 +352,7 @@ namespace Pop.Player
                 _coyoteTimer = 0f;
                 _groundIgnoreTimer = tuning.groundIgnoreAfterJump;
                 _isGrounded = false;
+                Jumped?.Invoke();
             }
 
             // 4) 추가 중력 + 낙하 속도 제한

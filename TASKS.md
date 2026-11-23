@@ -6,6 +6,63 @@
 - Unity 6000.3.25f1, URP, Input System. Unity 프로젝트 폴더는 `Pop/`
 - 프로젝트 메모(결정 · 규칙 요약): `Pop/ClaudeHand/NOTES.md`
 
+## 최신 (2026-11-23) 소리 (BGM · 효과음 · UI · 징글)
+- **구조**: `Pop/Assets/_Game/Scripts/Audio/GameAudio.cs`(싱글톤, 씬에 안 둠) + 설정 `Pop/Assets/_Game/Scripts/Audio/GameAudioSettings.cs` → 에셋 `Pop/Assets/_Game/Tuning/Resources/GameAudioSettings.asset`
+  - 시작: `[RuntimeInitializeOnLoadMethod(BeforeSceneLoad)]`가 Resources에서 설정을 불러 `GameAudio` 오브젝트를 만들고 DontDestroyOnLoad. 어느 씬에서 Play해도(Title · Mountain · Prototype) 생긴다. **씬 파일은 하나도 안 바꿈**
+  - 씬이 불릴 때마다: 그 씬의 PlayerController · PlungerController · RunManager 이벤트를 듣고, 모든 uGUI `Button`(꺼진 것 포함)의 onClick에 클릭음을 단다. 켜진 AudioListener가 없으면(Title) 자기 AudioListener를 켠다(소리는 전부 2D)
+  - AudioSource: 효과음 풀 10개(2D), 기절 반복 1개(loop), BGM 2개(크로스페이드), 징글 1개. 페이드는 unscaled 시간
+  - 무작위: 이벤트마다 변형 3개 중 하나, 바로 전과 같은 것은 안 고름. 효과음 · UI 피치 1 ± 0.05
+- **이벤트 → 클립** (클립은 전부 `Audio/` 아래 `_cut` 판, BGM만 원본 mp3)
+  - 발사(성공 · 실패) → `SFX_Plunger_Fire_0x_cut` — `PlungerController.Fired`(새 이벤트, Fire() 시작)
+  - 부착 → `SFX_Plunger_Attach_0x_cut` — `PlungerController.HeadPlanted`(새 이벤트, 보이는 머리가 꽂히는 순간. 날아가는 0.1초 안에 놓으면 안 남)
+  - 해제(클릭 · Space) → `SFX_Plunger_Release_0x_cut` — `PlayerController.Released` 중 상태가 Flying인 것(DoRelease)만. 접촉 해제 · 낙사 · 순간이동 해제는 소리 없음
+  - 점프 → `SFX_Jump_0x_cut` — `PlayerController.Jumped`(새 이벤트, 일반 점프만)
+  - 착지 → `SFX_Land_0x_cut`, 아래 속도로 볼륨: GameAudio.FixedUpdate(실행 순서 100, PlayerController 다음)가 공중일 때 마지막 속도를 기억했다가 IsGrounded가 켜지는 스텝에 씀. 잰 값: 0.2 m 턱 ≈ 2.4 m/s(소리 없음), 0.3 m 2.9, 0.5 m 3.9, 평지 점프 7.8
+  - 기절 시작(부착 중 접촉 기절 · 공중 충돌 기절 모두) → `SFX_Hit_Wall_0x_cut` 한 번 + `SFX_Stun_Loop_0x_cut` 반복 — `PlayerController.StateChanged`(→ Stunned). Stunned에서 나가면 0.15초 페이드 아웃. 리스폰(Respawned) · 씬 바뀜 · 플레이어 없어짐에도 멈춤
+  - UI 버튼 전부 → `UI_Button_Click_0x_cut`
+  - BGM: Title → `BGM_Title_01/02`, Mountain · Prototype → `BGM_Climb_01/02` (무작위, loop, 1.5초 크로스페이드). 같은 종류 씬끼리는 이어서 틀고, 떨어짐 · 리스폰에는 다시 시작 안 함
+  - 골인 → BGM 0.5초에 0으로 + `Jingle_Clear_0x_cut` — `RunManager.RunCleared`(새 이벤트, Clear() 끝). 다시 하기 · 타이틀로 가면 새 BGM이 크로스페이드로 들어온다(징글은 0.3초 페이드)
+- **튜닝**: `Tuning/Resources/GameAudioSettings.asset` 인스펙터 — 클립 목록, 볼륨(BGM 0.35 · SFX 0.8 · UI 0.6 · 징글 0.8), 이벤트별 배율(fire · attach · release · jump 0.8 · land · hitWall · stunLoop 0.6 · uiClick), pitchVariation 0.05, bgmCrossfadeTime 1.5, goalBgmVolumeMultiplier 0 · goalBgmFadeTime 0.5, stunLoopFadeOut 0.15, landMinImpactSpeed 2.8 · landFullImpactSpeed 9 · landMinVolume 0.3, titleScenes · climbScenes(씬 이름), sfxPoolSize 10, **debugLog**(켜면 `[GameAudio] <이벤트> -> <클립>` 로그)
+- **가져오기 설정**: `_cut` 효과음 · UI · 징글 = Decompress On Load, Force To Mono, Preload 켬, Load In Background 끔, Vorbis 100%(기절 반복 3개만 PCM — 반복 이음 안전). BGM mp3 4개 = Streaming, Vorbis 70%, Preload 끔. 원본 wav(`_cut` 아닌 것)는 안 씀
+- 바꾼 게임 코드(이벤트만 더함, 동작 · 수치 그대로): `PlayerController.Jumped`, `PlungerController.Fired` · `HeadPlanted`, `RunManager.RunCleared`
+- **Play 확인**: Title BGM → [시작] 클릭음 → Mountain 크로스페이드 · 점프 · 착지(세기별, 0.2 m 턱은 안 남) · 발사 · 부착 · 클릭 해제 · Space 해제 · 공중 벽 기절(Hit_Wall + 반복, 착지하면 멈춤) · 부착 중 천장 기절 · 기절 중 낙사 → 반복 멈춤, BGM 계속 · 골인 이벤트(RunCleared만 불러 기록 저장 안 함) → BGM 0 + 징글 · [다시 하기] → 새 Climb BGM · [타이틀로] → Title BGM · Prototype → Climb BGM. 경고 · 오류 없음. `Pop.BestClearTime`은 시험 전후 모두 없음(안 건드림)
+- 남은 것: AudioMixer 없음(볼륨은 설정 에셋으로), 실제 손 플레이로 볼륨 균형 확인, 착지 동작 · 줄 흔들림 소리 · 환경음(`Audio/AMB/` 비어 있음) 없음
+
+## 최신 (2026-11-23) Mountain 겉모습 VARCO 환경 모델로 교체 (Phase B)
+- **콜라이더 · 게임 동작은 그대로**: 바꾼 오브젝트마다 자식 `EnvVisual`(콜라이더 없음, static = Batching · Occluder · Occludee · ReflectionProbe, GI 기여는 끔)을 더하고 원래 MeshRenderer만 껐다. 위치 · 부모 · 콜라이더 · PlungerAttachable · Player · GameUI · GoalTrigger는 손대지 않음. Rebuild Mountain Level 실행 안 함(손 편집 보존). Prototype은 안 바뀜
+- **메뉴** `Pop/Dev/Apply Env Visuals`: 열린 씬에 적용. 다시 실행하면 이전 `EnvVisual`을 지우고 새로 만든다(멱등). 끝에 맞춤 검사 로그. 그 밖에 `Pop/Dev/Env Visuals/Setup Assets`(FBX 가져오기 설정 · 텍스처 · 머티리얼), `.../Fit Check`(검사만), `.../Remove`(EnvVisual 지우고 원래 렌더러 다시 켬). 코드 `Pop/Assets/_Game/Editor/EnvVisualsApplier.cs`
+- **에셋** `Pop/Assets/_Game/Art/Environment/Mountain/`: `Models/`(FBX 6개, Bake Axis Conversion 켬 · Generate Colliders 끔 · Read/Write 끔), `Textures/<모델>/`(base_color · normal · orm, + metallic_smoothness = M_AcornTree와 같은 방법: R = ORM.B, A = 1 - ORM.G), `Materials/M_*.mat`(URP Lit, Smoothness 0.6), `Concepts/`(컨셉 그림). 안 쓴 것: WedgeRock_Mossy, MossPad, unused 폴더
+- **대응**
+  - `Crag_*/Rock` 29개 → Env_WedgeRock_Grey: Rock 메시 범위(폭 · 높이 · 깊이 4)에 맞추고 바닥 맞춤, 모델 지붕이 볼록해서 Rock 콜라이더와 레이로 비교해 높이만 줄임
+  - `Crag_*/Patch` 29개 → **그대로 (사용자 결정: 연두베이지 M_Attachable 상자가 보이게 둔다)**
+  - 보통 발판 `T*_Ledge_*` 24개(4.5~7.8 × 2.5 × 4) → Env_LogLedge(Y 90° 회전). 폭 6 m 넘으면 2개를 끝과 끝으로. 평평한 윗면 = 상자 윗면. 가지 그루터기 끝은 1개면 가까운 벽 쪽, 2개면 양 바깥 끝
+  - `T7_Ledge_23 (1)~(7)`, `T2_Ledge_06 (1)~(3)` → Env_TrunkPillar(밑동이 벌어진 모양이라 몸통 폭을 상자 폭 - 0.1 m에 맞춤)
+  - `T5_Ledge_15`, `T5_Ledge_16` → Env_RockPillar 3개 쌓기(윗면이 울퉁불퉁해서 위 두 조각은 뒤집어 평평한 면을 위로, 이음은 겹쳐 묻음)
+  - `Summit_Plateau`, `Ledge_Start` → Env_MesaPlateau / `Wall_Left`, `Wall_Right` → Env_CliffWall 24장 세로 타일(번갈아 뒤집음)
+  - **2차 (2026-11-23, "아직 회색 박스 부분이 있어")**: `Floor_Basin` → Ground, `Backdrop_Mountain/Backdrop_00~22` → Backdrop 규칙을 applier에 더했다(같은 메뉴 한 번으로 전부, 멱등). 모델 대신 **만든 메시**(씬에 저장)를 EnvVisual 아래에 둔다
+    - Ground(`GrassGround`): Floor_Basin 모양(윗면 꺾인선 + 평평한 바닥, z ±2)을 그대로 다시 만든다 → 윗면 = 콜라이더 면(맞춤 검사 0.00). 윗면 + 옆면 위쪽 울퉁불퉁한 띠(0.16~0.40 m) = 풀 `M_Ground_Grass`, 나머지 옆 · 앞 · 바닥 = 돌 `M_Ground_Rock`, 월드 좌표 UV
+    - Backdrop(`BackdropCliff`): 판마다 앞면(z 13)만 있는 절벽 면. 판 가운데 높이를 잇는 부드러운 산 능선 + 울퉁불퉁한 윤곽, z ±1.6 m 굴곡(법선은 해석적으로 → 판 경계 이음선 없음). 열 1 m × 행 60, 판 23개 합계 약 3만 삼각형. `M_Backdrop_Cliff`(절벽 돌, 어둡고 푸르스름한 tint, 30 m 타일)
+    - 텍스처: VARCO 텍스처는 UV 아틀라스라 메사 윗면 풀 · 절벽 돌 영역을 잘라 4장 섞기로 이음선 없는 반복 텍스처를 만든다 `Art/Environment/Mountain/Textures/Env_Tile/`(base · normal · metallic_smoothness, Wrap Repeat, TextureImporter.userData = 버전). 머티리얼 `Materials/M_Ground_Grass · M_Ground_Rock · M_Backdrop_Cliff`(URP Lit)
+    - 새 메뉴 `Pop/Dev/Env Visuals/Audit`: 켜진 회색 상자 렌더러 목록(EnvVisual · Crag Patch · Player · GameUI · 도토리 나무 제외) → **0개**. SafetyNet은 렌더러 없음
+    - Play: Floor_Basin x 20 · 45 · 70에 세움 → Normal · 접지, 콜라이더 바닥 - 표면 = +0.001 m. 패치 아래 · 비스듬히 아래 레이 87개 중 85개가 패치에 맞음(2개는 전처럼 사용자 기둥 T2_Ledge_06 (1)), EnvVisual 콜라이더 0개. 골인 근처는 안 감, `Pop.BestClearTime`(가짜 110.34 s) 그대로
+    - 남은 것: 돌 · 배경 텍스처가 반복되는 줄무늬가 보인다(배경 절벽의 가로 금 · 바닥 앞면 7~11 m 반복). 풀 윗면은 거의 단색. 배경 판 맨 바깥 두 장(x -82 · +148) 바깥 끝은 세로로 잘림
+    - 그림: `Pop/Screenshots/env2_start_basin_final.png`(시작 구역) · `env2_overview.png` · `env2_backdrop.png` · Game 뷰 `env2_game_basin_x20.png` · `env2_game_basin_x70.png`(전: `env2_before_start.png`)
+  - 그대로: 도토리 나무, 골인, Crag Patch. 규칙에 안 맞아 남은 것 없음
+  - 모델 조각 123개, 약 123만 삼각형. Play GPU 약 0.9 ms라 그림자는 그대로 둠
+- **맞춤 검사** (겉모습 메시 vs 콜라이더 레이 비교, z = 0, m)
+  - 서는 윗면 중앙값: 통나무 -0.02, 나무 기둥 -0.03, 바위 기둥 0.00, 메사 +0.03. 옆면 끝에서 설 수 있는 높이(-0.15 안)까지: 통나무 ≤ 0.05, 바위 기둥 ≤ 0.07, 나무 기둥 ≤ 0.10, 메사 ≤ 0.15
+  - 통나무 한쪽 끝 그루터기(길이의 약 15%)는 윗면보다 최대 0.30 m 높다(모델 모양). 그 끝에 서면 발이 묻혀 보인다
+  - 메사는 윗면 가장자리가 둥글어 양옆으로 0.55 m 넓혔다 → 옆으로 최대 0.31 m 튀어나옴(규칙 0.15 넘음, 서는 면 쪽을 택함)
+  - 쐐기 바위 지붕(서는 면 아님): 작은 바위 중앙값 0.00~+0.03, 큰 바위 T7_A18~20(폭 4.6 m)은 중앙값 +0.11, 울퉁불퉁해서 ±0.46. 옆으로 최대 0.30
+  - 나무 기둥 옆면 안쪽 최대 0.14 · 바깥 0.04, 바위 기둥 안쪽 0.20, 절벽 벽 안쪽 면 안쪽 최대 0.34(울퉁불퉁)
+- **Play 확인**
+  - RouteBot 0단계부터: 1단계(T1_A00) 발사 실패 — 사용자가 옮긴 Crag_T1_A00(예전과 같음). 5단계부터(순간이동): 5~41 통과, 42(T5_A13)에서 T5_Ledge_15 기둥에 부딪혀 기절. 58부터: 59(T7_A18) 스윙 중 Crag_T6_A16에 부딪혀 기절. 65부터: 65~81 통과, 82(T9_A25)에서 사용자 기둥 T7_Ledge_23 (3)에 부딪혀 기절. 실패는 모두 경로 데이터(MountainRoute)와 지금 레벨이 어긋난 곳(T6_Ledge_18/19 없음, 기둥 · 바위 위치 등). EnvVisual을 Play 중에만 끄고 같은 구간(40~, 58~)을 다시 돌려도 같은 단계 · 같은 위치에서 실패 → 겉모습은 게임에 영향 없음
+  - DropTester 5곳(T1_Ledge_02 · T7_Ledge_23 (1) · Crag_T1_A01 Rock · Summit_Plateau · T2_Ledge_06 (1)): 겉모습 켜고 / 끄고 결과 같음
+  - 뚫어뻥 조준 레이: 패치 29개 × 5방향 = 145개 중 142개가 패치에 맞음. 3개는 사용자 기둥 T2_Ledge_06 (1)(2)의 콜라이더에 막힘(겉모습과 무관). EnvVisual 아래 콜라이더 0개
+  - **주의**: DropTester의 정상 지점 낙하가 골인 판정에 들어가 가짜 최고 기록 01:50.33이 PlayerPrefs `Pop.BestClearTime`에 저장됨. 지우기: `PlayerPrefs.DeleteKey("Pop.BestClearTime")` 또는 `ClearRecord.ClearBest()`
+- 확인 그림: `Pop/Screenshots/env_overview.png`, `env_section1_foothills.png` ~ `env_section4_summit.png`, Game 뷰 `env_play_bot_t8.png`(통나무 위) · `env_game_player_wedge-1.png`(쐐기 바위 옆)
+- 남은 것: 사용자 눈 확인, 통나무 그루터기 끝 · 메사 가장자리 절충이 괜찮은지, 경로 데이터를 지금 레벨에 맞추면 봇 완주 검증 가능
+
 ## 최신 (2026-11-23) 다람쥐 Mixamo 리깅 · 대기 / 걷기 · 달리기 / 점프 애니메이션
 - **모델**: `Pop/Assets/_Game/Art/Characters/Squirrel/Mixamo/Squirrel_Explorer_Mixamo.fbx` (4.2만 삼각형, Mixamo 뼈대 25개 · 손가락 없음, Humanoid). VARCO 리그 FBX(45 MB, 24.6만 삼각형)는 참조가 없어져 지웠다. 재질 · 텍스처는 그대로 `M_Squirrel_Explorer_Rig.mat`
   - 만든 순서: 예전 FBX에서 뼈대를 떼고 Blender로 17%까지 줄임 → Mixamo 자동 리깅(OBJ, 100배 크기로 올려야 함) → Blender에서 스킨 고침 → FBX

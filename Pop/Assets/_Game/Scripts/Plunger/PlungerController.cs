@@ -105,6 +105,10 @@ PlayerController _player;
 
         /// <summary>발사 실패 (부착 불가 면 / 아무것도 없음)</summary>
         public event Action FireFailed;
+        /// <summary>발사했을 때 (성공·실패 모두, 판정 직전). 소리 등 표시용.</summary>
+        public event Action Fired;
+        /// <summary>부착 발사의 머리가 부착 지점에 꽂혔을 때 (보이는 연출 기준). 소리 등 표시용.</summary>
+        public event Action HeadPlanted;
 
         PlayerTuning Tuning => _player != null ? _player.tuning : null;
 
@@ -172,6 +176,7 @@ void Update()
         /// </summary>
         bool Fire(PlayerTuning tuning)
         {
+            Fired?.Invoke();
             if (Aim == AimKind.Attachable && _player.TryAttach(_aimHit.point, _aimHit.normal, _aimHit.collider))
             {
                 StartShot(attach: true);
@@ -358,6 +363,7 @@ void LateUpdate()
                         if (_shotForAttach)
                         {
                             ClearShot(); // 꽂힘: 이제부터는 부착 표시가 이어받는다
+                            HeadPlanted?.Invoke();
                             return false;
                         }
                         if (_shotBlocked)

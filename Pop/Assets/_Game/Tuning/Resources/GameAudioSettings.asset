@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24c5d54863a238c42aae888c8aafb8af, type: 3}
+  m_Name: GameAudioSettings
+  m_EditorClassIdentifier: Assembly-CSharp::Pop.Audio.GameAudioSettings
+  plungerFire:
+  - {fileID: 8300000, guid: daa41d8763b628d4db4ebc2640d1db31, type: 3}
+  - {fileID: 8300000, guid: 55be9b815a52c694f8b7270c6051d96b, type: 3}
+  - {fileID: 8300000, guid: 68eaca7726466f2469c2ac5b3e59d4d5, type: 3}
+  plungerAttach:
+  - {fileID: 8300000, guid: ef5531c91b2e8564eae60cb995b27d82, type: 3}
+  - {fileID: 8300000, guid: addea86603e63ea4699e4d1bc2df56fd, type: 3}
+  - {fileID: 8300000, guid: 01332a2b7a8383a439c15a09c360ca18, type: 3}
+  plungerRelease:
+  - {fileID: 8300000, guid: e5ce8cb14cb63814f9107871e746793d, type: 3}
+  - {fileID: 8300000, guid: 4018b6c2d3bef2b46b8493a6ac645838, type: 3}
+  - {fileID: 8300000, guid: dfa0c1d8cc8fb074aa1e5a01cbd4e4e8, type: 3}
+  jump:
+  - {fileID: 8300000, guid: 45679775bd4fe6545b3bf8ec5a930e9f, type: 3}
+  - {fileID: 8300000, guid: b4f527266c40ba94485b80b48e699b6b, type: 3}
+  - {fileID: 8300000, guid: 9800a0b2995a1644fa2e152b71dd9c80, type: 3}
+  land:
+  - {fileID: 8300000, guid: 7b21eb36b83727441b91819a0905e431, type: 3}
+  - {fileID: 8300000, guid: 1b6820d1e2ef6f044b5232f69d479880, type: 3}
+  - {fileID: 8300000, guid: b908a1c861d93c845a5a2469dc218cfd, type: 3}
+  hitWall:
+  - {fileID: 8300000, guid: dbf3759db05b60e4b9fb43fdca0d5fce, type: 3}
+  - {fileID: 8300000, guid: 0c31d079aa96ef54ebad7db106204fbe, type: 3}
+  - {fileID: 8300000, guid: b43966c591d99e6448496bc3c242d175, type: 3}
+  stunLoop:
+  - {fileID: 8300000, guid: 631f2f55549a62b43a5ca8d155d6eace, type: 3}
+  - {fileID: 8300000, guid: 3edce23c616527f4e870e98fd27e486d, type: 3}
+  - {fileID: 8300000, guid: 89382a1f153a6514b91b18d8c0988e6d, type: 3}
+  uiClick:
+  - {fileID: 8300000, guid: 7a8f8bf07de9a6f40a57066c14911fbb, type: 3}
+  - {fileID: 8300000, guid: e1a2dec56cc71404693aa38e72c7b8b2, type: 3}
+  - {fileID: 8300000, guid: 06d9fd60a0c4de148a1be3284ce0f8c5, type: 3}
+  jingleClear:
+  - {fileID: 8300000, guid: 3fb1f753d5a0ab244854ea9f50441990, type: 3}
+  - {fileID: 8300000, guid: 2c7d178461e78ef48b16328a640d42f9, type: 3}
+  - {fileID: 8300000, guid: 4f3e961e6072b3448ba93154168d65c2, type: 3}
+  bgmTitle:
+  - {fileID: 8300000, guid: 391a0df5775b30845bbf739b6ca9c577, type: 3}
+  - {fileID: 8300000, guid: d8512efe5eec45d49b1fd939ce33a4b3, type: 3}
+  bgmClimb:
+  - {fileID: 8300000, guid: 85c6a3067d98513429c687ee06fae211, type: 3}
+  - {fileID: 8300000, guid: 4967b614fc6e98044b052f1faff1723d, type: 3}
+  titleScenes:
+  - Title
+  climbScenes:
+  - Mountain
+  - Prototype
+  bgmVolume: 0.35
+  sfxVolume: 0.8
+  uiVolume: 0.6
+  jingleVolume: 0.8
+  fireVolume: 1
+  attachVolume: 1
+  releaseVolume: 1
+  jumpVolume: 0.8
+  landVolume: 1
+  hitWallVolume: 1
+  stunLoopVolume: 0.6
+  uiClickVolume: 1
+  pitchVariation: 0.05
+  bgmCrossfadeTime: 1.5
+  goalBgmVolumeMultiplier: 0
+  goalBgmFadeTime: 0.5
+  stunLoopFadeOut: 0.15
+  landMinImpactSpeed: 2.8
+  landFullImpactSpeed: 9
+  landMinVolume: 0.3
+  sfxPoolSize: 10
+  debugLog: 0
