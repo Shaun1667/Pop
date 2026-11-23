@@ -4,7 +4,7 @@ namespace Pop.Player
 {
     /// <summary>
     /// 기절 표시(임시). Stunned 동안 머리 위에서 도는 노란 별(구, 콜라이더 없음) + 플레이어 색을 어둡게.
-    /// 착지로 풀리는 순간 별이 바깥으로 튀며 사라지고 플레이어가 잠깐 밝게 번쩍인다.
+    /// 착지로 풀리는 순간 별이 바깥으로 튀며 사라진다 (번쩍임 없음, 색은 바로 원래대로).
     /// 낙사 등 다른 이유로 풀리면 바로 지운다.
     /// </summary>
     [DisallowMultipleComponent]
@@ -114,12 +114,11 @@ namespace Pop.Player
             float size = starSize;
             if (!_stunned)
             {
-                // 풀림 효과: 별이 바깥으로 퍼지며 작아지고, 플레이어는 밝게 번쩍였다 돌아온다.
+                // 풀림 효과: 별이 바깥으로 퍼지며 작아진다. 플레이어 색은 SetStunned(false)에서 이미 원래대로.
                 _punch -= dt;
                 float k = recoverPunchTime > 0f ? Mathf.Clamp01(1f - _punch / recoverPunchTime) : 1f;
                 radius = orbitRadius * (1f + 1.8f * k);
                 size = starSize * (1f - k);
-                ApplyTint(1f, 0.6f * (1f - k));
                 if (_punch <= 0f)
                 {
                     _punch = 0f;

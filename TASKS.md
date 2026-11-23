@@ -6,6 +6,9 @@
 - Unity 6000.3.25f1, URP, Input System. Unity 프로젝트 폴더는 `Pop/`
 - 프로젝트 메모(결정 · 규칙 요약): `Pop/ClaudeHand/NOTES.md`
 
+## 최신 (2026-11-23) 기절 풀림 번쩍임 제거 (사용자 요청)
+- `PlayerStunVisual`: 착지로 풀릴 때 흰색 섞기를 지움. 풀리면 색이 바로 원래대로 돌아오고, 별이 튀며 사라지는 연출만 남음. 기절 중 어둡게(0.6) · 별은 그대로. 셰이더 `_FlashAmount` 시도는 커밋하지 않고 되돌림
+
 ## 최신 (2026-11-23) 플레이어 캐릭터에 툰 셰이더 (사용자가 털 대신 툰을 고름. 캐릭터만, 환경 머티리얼은 그대로)
 - **셰이더** `Pop/Assets/_Game/Art/Shaders/PopToonCharacter.shader`("Pop/Toon Character", URP 17.3, Forward · Forward+ 모두, 렌더러 피처 없음) + `PopToonDepthPasses.hlsl`
   - ToonForward: 부드러운 2단 램프(half-lambert, 경계만 흐림) + SH 환경광 + 크림색 림(빛 쪽이 조금 더 셈). **그림자는 받지 않음**(얼룩 방지), 드리우기만. 추가 광원은 안 씀
