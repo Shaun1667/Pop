@@ -56,7 +56,7 @@ namespace Pop.EditorTools
 
             var t = MakeText("Title", root, "Pop", 190, AccentColor, FontStyle.Bold);
             Place(t.rectTransform, new Vector2(0.5f, 0.77f), new Vector2(900, 230));
-            var sub = MakeText("Subtitle", root, "다람쥐, 뚫어뻥 하나로 도토리 나무까지", 44, TextColor, FontStyle.Normal);
+            var sub = MakeText("Subtitle", root, "하늘 다람쥐, 뚫어뻥 하나로 도토리 나무까지", 44, TextColor, FontStyle.Normal);
             Place(sub.rectTransform, new Vector2(0.5f, 0.595f), new Vector2(1400, 70));
 
             var best = MakeText("BestTime", root, "최고 기록  —:—", 36, AccentColor, FontStyle.Normal);
