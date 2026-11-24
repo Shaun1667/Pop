@@ -36,11 +36,21 @@ namespace Pop.Player
         [Tooltip("비막을 펴고 접는 데 걸리는 시간 (s)")]
         public float wingsBlendTime = 0.25f;
         [Tooltip("활공 자세에서 몸 전체를 앞으로 기울이는 각도 (도). 엉덩이 뼈를 돌린다")]
-        public float glideLean = 25f;
+        public float glideLean = 40f;
         [Tooltip("활공 자세에서 보이는 모델만 바닥 위로 띄우는 높이 (m). 캡슐 · 물리 · 이동 높이는 그대로다")]
         public float glideHover = 0.2f;
         [Tooltip("숙인 만큼 머리를 되돌리는 비율 (0 = 같이 숙임, 1 = 머리는 그대로)")]
         [Range(0f, 1f)] public float glideHeadCounter = 0.6f;
+        [Header("W/S로 위 · 아래를 볼 때 고개 (보이는 것만)")]
+        [Tooltip("W(위 보기)를 누르고 있을 때 고개를 드는 최대 각도 (도). 0이면 끔")]
+        public float headLookUp = 32f;
+        [Tooltip("S(아래 보기)를 누르고 있을 때 고개를 숙이는 최대 각도 (도). 0이면 끔")]
+        public float headLookDown = 30f;
+        [Tooltip("고개가 따라가고 되돌아오는 시간 (s). 클수록 느긋하다")]
+        public float headLookSmoothTime = 0.18f;
+        [Tooltip("각도 중 목 뼈가 맡는 비율 (나머지는 머리 뼈). 목 뼈가 없으면 머리가 전부 맡는다")]
+        [Range(0f, 1f)] public float headLookNeckShare = 0.4f;
+
 
         public const string WingsLayerName = "Wings";
 
@@ -56,7 +66,7 @@ namespace Pop.Player
         RuntimeAnimatorController _wingsCtrl;
         int _wingsLayer = -1;
         float _wings;
-        Transform _spine, _head;   // _spine = 기울일 때 돌리는 뼈(엉덩이)
+        Transform _spine, _head, _neck;   // _spine = 기울일 때 돌리는 뼈(엉덩이)
         Vector3 _modelBaseLocal;
         bool _hasModelBase;
 
@@ -66,6 +76,10 @@ namespace Pop.Player
         /// <summary>애니메이션이 보는 '서 있음' (짧은 끊김을 무시한 값)</summary>
         public bool AnimGrounded { get; private set; } = true;
         public float JumpT => _jumpT;
+        float _headLook, _headLookVel;   // -1(숙임) ~ +1(듦), 부드럽게 따라간 값
+        /// <summary>W/S 고개 정도 -1(숙임) ~ +1(듦)</summary>
+        public float HeadLook => _headLook;
+
 
         void Awake()
         {
@@ -101,6 +115,15 @@ namespace Pop.Player
             animator.SetFloat(VSpeedId, hanging ? 0f : v.y);
 
             UpdateWings(dt);
+            UpdateHeadLook(dt, st);
+        }
+
+        // W/S(GameInput.LookY, 일시정지 중엔 0)를 부드럽게 따라간다. 기절 · 사망 중엔 고개를 움직이지 않고 원위치로.
+        void UpdateHeadLook(float dt, PlayerState st)
+        {
+            if (dt <= 0f) return;   // 일시정지(timeScale 0): 그대로 둔다
+            float target = (st == PlayerState.Stunned || st == PlayerState.Dead) ? 0f : Mathf.Clamp(Pop.Input.GameInput.LookY, -1f, 1f);
+            _headLook = Mathf.SmoothDamp(_headLook, target, ref _headLookVel, Mathf.Max(0.01f, headLookSmoothTime), Mathf.Infinity, dt);
         }
 
         void UpdateWings(float dt)
@@ -113,6 +136,7 @@ namespace Pop.Player
                 _spine = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Hips) : null;
                 if (!_hasModelBase) { _modelBaseLocal = animator.transform.localPosition; _hasModelBase = true; }
                 _head = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+                _neck = animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Neck) : null;
                 _wings = 0f;
             }
             if (_wingsLayer < 0) return;
@@ -125,9 +149,16 @@ namespace Pop.Player
 
         // 보이는 모델만 띄우고(무게만큼), Animator가 자세를 쓴 뒤에 엉덩이 뼈를 돌려 몸 전체를 앞으로 기울인다.
         // 매 프레임 Animator가 뼈를 다시 쓰므로 쌓이지 않는다. Player(캡슐 · Rigidbody)는 건드리지 않는다.
-        void LateUpdate()
+void LateUpdate()
         {
-            if (_wingsLayer < 0 || animator == null || !_hasModelBase) return;
+            if (animator == null) return;
+            ApplyGlide();
+            ApplyHeadLook();   // 활공 머리 보정 뒤에 더한다
+        }
+
+        void ApplyGlide()
+        {
+            if (_wingsLayer < 0 || !_hasModelBase) return;
             var model = animator.transform;
             Vector3 lift = Vector3.up * (glideHover * _wings);
             model.localPosition = _modelBaseLocal + (model.parent != null ? model.parent.InverseTransformVector(lift) : lift);
@@ -137,6 +168,20 @@ namespace Pop.Player
             Vector3 right = animator.transform.right;
             _spine.Rotate(right, lean, Space.World);
             if (_head != null) _head.Rotate(right, -lean * glideHeadCounter, Space.World);
+        }
+
+        // W/S 고개: 모델의 오른쪽 축(월드)으로 돌리므로 좌우 어느 쪽을 보든 위는 위, 아래는 아래다.
+        // Animator가 매 프레임 뼈를 다시 쓰므로 쌓이지 않는다.
+        void ApplyHeadLook()
+        {
+            if (_head == null || Mathf.Abs(_headLook) < 0.001f) return;
+            // + = 숙임(glideLean과 같은 방향), - = 듦
+            float pitch = _headLook > 0f ? -headLookUp * _headLook : headLookDown * -_headLook;
+            if (Mathf.Abs(pitch) < 0.01f) return;
+            Vector3 right = animator.transform.right;
+            float neckPart = _neck != null ? pitch * headLookNeckShare : 0f;
+            if (_neck != null) _neck.Rotate(right, neckPart, Space.World);
+            _head.Rotate(right, pitch - neckPart, Space.World);
         }
     }
 }

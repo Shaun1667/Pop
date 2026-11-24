@@ -6,6 +6,13 @@
 - Unity 6000.3.25f1, URP, Input System. Unity 프로젝트 폴더는 `Pop/`
 - 프로젝트 메모(결정 · 규칙 요약): `Pop/ClaudeHand/NOTES.md`
 
+## 최신 (2026-11-24) W/S로 위 · 아래를 볼 때 고개도 살짝 (사용자 요청, 보이는 것만)
+- `Scripts/Player/PlayerAnimationVisual.cs`만 고침(씬 · 에셋 · 카메라 · 셰이더 그대로). `GameInput.LookY`를 SmoothDamp로 따라간 값(`HeadLook` -1~+1)만큼 LateUpdate에서 목 · 머리 뼈를 모델의 오른쪽 축(월드)으로 돌림 → 좌우 어느 쪽을 보든 W = 듦, S = 숙임. 활공 머리 보정(`glideHeadCounter`) 뒤에 더함(LateUpdate를 `ApplyGlide` → `ApplyHeadLook`으로 나눔, Wings 레이어가 없는 컨트롤러도 고개는 동작)
+- 인스펙터 필드(기본값): `headLookUp` 32도 · `headLookDown` 30도 · `headLookSmoothTime` 0.18초 · `headLookNeckShare` 0.4(목 뼈 몫, 나머지는 머리). 각도 0이면 끔
+- 기절 · 사망 중엔 목표 0(원위치). 일시정지는 GameInput이 LookY 0을 주고, timeScale 0인 동안은 값을 그대로 둠(풀리면 부드럽게 돌아옴)
+- **확인**(Title에서 Play → 런타임에 Mountain 로드, 끝나고 정지): 컴파일 오류 없음. 서 있는 자세에서 머리 앞 방향 피치 = 평소 약 +1도 / W 약 +20도 / S 약 -14도, 좌우 양쪽 같음. 키를 떼면 0으로 복귀. 카메라 LookOffset도 같이 6 m까지 정상. 그림 `Pop/Screenshots/headlook_{up,down}_{right,left}.png`(가까이서 찍은 임시 카메라. down_left만 입력 주입이 안 먹어 HeadLook 값을 직접 넣고 찍음)
+- 안 한 시험: 활공 달리기 · 점프 · 매달린 중 W/S(코드상 같은 경로), 사람 눈 확인
+
 ## 최신 (2026-11-23) 기절 풀림 번쩍임 제거 (사용자 요청)
 - `PlayerStunVisual`: 착지로 풀릴 때 흰색 섞기를 지움. 풀리면 색이 바로 원래대로 돌아오고, 별이 튀며 사라지는 연출만 남음. 기절 중 어둡게(0.6) · 별은 그대로. 셰이더 `_FlashAmount` 시도는 커밋하지 않고 되돌림
 
@@ -27,11 +34,11 @@
 - **사용자 요청**: ① "달릴 때 날개를 펴고 간간히 퍼덕이면서 날게, 이동 모션만, 이동 높이 동일" → ② 수정 "달릴 때 다리는 움직이지 않고 머리도 흔들리지 않아야, 다리가 공중에 떠야 하고 앞으로 살짝 기울어지게". (①의 첫 구현 = 달리기 다리 그대로 + 팔만 덮는 레이어는 ②로 대체됨)
 - **방식**: Animator에 온몸을 덮는 **`Wings` 레이어**(Override, 기본 무게 0, 상태 WingsFlap)를 두고 `PlayerAnimationVisual`이 무게를 넣는다(바닥에서 Speed 1.5→4 m/s SmoothStep, 공중 · 매달림 0, `wingsBlendTime` 0.25초). 무게 1이면 달리기 클립이 완전히 덮인다. 이동 · 물리 · 캡슐 · Rigidbody · 튜닝 · 씬은 안 바꿈(컨트롤러 GUID 유지)
 - **에셋**(Setup이 코드로 만든다, `Art/Characters/FlyingSquirrel/Mixamo/`): `FlyingSquirrel_WingsFlap.anim`(2.4초 루프. Idle 첫 프레임의 Humanoid 커브 130개를 고정값으로 깔고 → RootQ = 정면 · RootT.x = 0(좌우 대칭) → 몸통 · 목 · 머리 근육 0(`GlideBody`) → 다리 고정 자세(`GlideLeg`) → 팔: 편 채 미끄러지다 1.6~2.1초에 두 번 퍼덕임(+28 / -36도) → 퍼덕일 때 엉덩이가 안 움직이게 RootT.y 보정) · `FlyingSquirrel_Wings.mask`(온몸) · `FlyingSquirrel.controller`(레이어 2개)
-- **코드**: `Editor/SquirrelAnimationSetup.cs`(`Character.wings` = Flying만 true, `EnsureWingsClip` · `EnsureWingsMask`, 상수 `WingsLoop · WingLevel 0.40 · WingFront 0.42 · WingTwist · WingStretch · WingElevation · GlideBody · GlideLeg · WingBodyCompUp/Down`), `Scripts/Player/PlayerAnimationVisual.cs`(`glideHover` 0.2 m = 보이는 모델(animator.transform)만 무게만큼 위로, `glideLean` 25 (2026-11-23 사용자 "25도로", 13에서 올림 · 옛 메모리 값이 남지 않게 필드 이름도 바꿈) = LateUpdate에서 엉덩이 뼈를 앞으로 돌림, `glideHeadCounter` 0.6. Wings 레이어가 없는 컨트롤러(예전 다람쥐)는 아무것도 안 함)
+- **코드**: `Editor/SquirrelAnimationSetup.cs`(`Character.wings` = Flying만 true, `EnsureWingsClip` · `EnsureWingsMask`, 상수 `WingsLoop · WingLevel 0.40 · WingFront 0.42 · WingTwist · WingStretch · WingElevation · GlideBody · GlideLeg · WingBodyCompUp/Down`), `Scripts/Player/PlayerAnimationVisual.cs`(`glideHover` 0.2 m = 보이는 모델(animator.transform)만 무게만큼 위로, `glideLean` 40 (2026-11-24 사용자 "더 기울여줘"로 25에서 올림, 그 전 2026-11-23 13→25 · 옛 메모리 값이 남지 않게 필드 이름도 바꿈) = LateUpdate에서 엉덩이 뼈를 앞으로 돌림, `glideHeadCounter` 0.6. Wings 레이어가 없는 컨트롤러(예전 다람쥐)는 아무것도 안 함)
 - **알아둘 것**: 이 아바타의 근육 부호 — Arm Front-Back 0.30 = 정확히 옆 · 클수록 뒤, Upper Leg In-Out + = 벌림, Upper Leg Front-Back 1.0 = 뒤로 최대(약 30도), Foot Up-Down - = 발끝 폄. Humanoid RootT는 무게중심이라 팔 · 다리 자세를 바꾸면 엉덩이 높이가 따라 변한다. Player · Visual 스케일 0.6(바닥 = Player y - 0.6)
 - **검증**(Mountain Play, 달리는 중): 엉덩이 기준 발 위치 변화 0.000002 m 이하(다리 정지), 머리 y 범위 0.0011 m(퍼덕임 포함), 가장 낮은 발 뼈 = 지면 위 0.195 m(hover 0이면 -0.005 m), 기울임 엉덩이 13.0도 / 머리 5.2도. Player transform · Rigidbody y 0.60000 고정(hover 0.2와 0에서 같음), 캡슐 center (0,0,0) · height 2 · radius 0.5 불변. 가속 · 감속 때 무게 · hover 약 0.25초에 고르게, 멈춘 뒤 모델 localPosition 기준값과 차이 0, 점프 중 무게 0 · 오프셋 0 · Air 자세, 착지 후 다시 활공, 좌우 전환 정상. Setup 재실행으로 같은 결과(GUID 불변)
 - **남은 것 / 사용자 판단**
-  - 모습은 "엎드려 나는" 것이 아니라 선 채로 떠서 25도 숙인 자세다(다리가 짧아 뒤로 길게 안 뻗음). 게임 화면에서는 캐릭터가 약 70px이라 뜬 것 · 다리 정지는 보이지만 비막 · 퍼덕임은 작다. 꼬리는 Humanoid 뼈가 아니라 움직임 없음
+  - 모습은 "엎드려 나는" 것이 아니라 선 채로 떠서 40도 숙인 자세다(다리가 짧아 뒤로 길게 안 뻗음). 게임 화면에서는 캐릭터가 약 70px이라 뜬 것 · 다리 정지는 보이지만 비막 · 퍼덕임은 작다. 꼬리는 Humanoid 뼈가 아니라 움직임 없음
   - 안 한 시험: 줄에 매달린 상태(코드상 무게 0), 걷기 속도(0.9~1.5 m/s) 유지, 근접 확대 메시 검사
 
 ## (2026-11-23) 뚫어뻥 줄이 몸통(가슴)에서 나오게 (사용자 "캐릭터를 바꾸면서 뚫어뻥 줄이 몸통 밖으로 나오게 됐어")
